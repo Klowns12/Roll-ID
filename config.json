@@ -1,0 +1,48 @@
+{
+    "app": {
+        "name": "Fabric Roll Management System",
+        "version": "1.0.0",
+        "organization": "Your Company",
+        "data_dir": "data",
+        "log_dir": "logs"
+    },
+    "database": {
+        "file": "fabric_rolls.db",
+        "backup_dir": "backups",
+        "backup_count": 5
+    },
+    "api": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": false,
+        "secret_key": "your-secret-key-here"
+    },
+    "scanning": {
+        "auto_scan_interval": 5,
+        "default_scanner": "builtin"
+    },
+    "printing": {
+        "default_printer": "",
+        "paper_size": "A4",
+        "orientation": "portrait",
+        "margin_top": 10,
+        "margin_bottom": 10,
+        "margin_left": 10,
+        "margin_right": 10
+    },
+    "ui": {
+        "theme": "light",
+        "font_family": "Arial",
+        "font_size": 10,
+        "table_rows_per_page": 50
+    },
+    "labels": {
+        "template": "default",
+        "show_qr_code": true,
+        "show_barcode": true,
+        "qr_code_size": 40,
+        "barcode_height": 15,
+        "include_company_logo": false,
+        "logo_path": ""
+    }
+}
