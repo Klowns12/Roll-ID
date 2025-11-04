@@ -4,8 +4,27 @@ from flask_cors import CORS
 import threading
 import logging
 import json
+import atexit
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
+
+# Global variable to store cleanup function
+_cleanup_handlers = []
+
+def register_cleanup(handler: Callable[[], None]) -> None:
+    """Register a cleanup handler to be called on exit"""
+    _cleanup_handlers.append(handler)
+
+def cleanup() -> None:
+    """Execute all registered cleanup handlers"""
+    for handler in _cleanup_handlers:
+        try:
+            handler()
+        except Exception as e:
+            logging.error(f"Error during cleanup: {e}")
+
+# Register cleanup with atexit
+atexit.register(cleanup)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,8 +35,18 @@ class APIServer:
         self.host = host
         self.port = port
         self.debug = debug
+        self._running = False
+        self._thread = None
+        
+        # Initialize Flask and SocketIO
         self.app = Flask(__name__)
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode='threading')
+        self.socketio = SocketIO(
+            self.app, 
+            cors_allowed_origins="*", 
+            async_mode='threading',
+            logger=debug,
+            engineio_logger=debug
+        )
         CORS(self.app)
         
         # Store connected clients
@@ -28,6 +57,9 @@ class APIServer:
         
         # Setup socket events
         self.setup_socket_events()
+        
+        # Register cleanup
+        register_cleanup(self.stop)
     
     def setup_routes(self):
         """Set up the API routes"""
@@ -104,30 +136,92 @@ class APIServer:
     
     def run(self):
         """Run the API server"""
+        if self._running:
+            logger.warning("API server is already running")
+            return
+            
+        self._running = True
         logger.info(f"Starting API server on {self.host}:{self.port}")
-        self.socketio.run(
-            self.app,
-            host=self.host,
-            port=self.port,
-            debug=self.debug,
-            use_reloader=False,
-            allow_unsafe_werkzeug=True
+        try:
+            self.socketio.run(
+                self.app,
+                host=self.host,
+                port=self.port,
+                debug=self.debug,
+                use_reloader=False,
+                allow_unsafe_werkzeug=True
+            )
+        except Exception as e:
+            logger.error(f"API server error: {e}")
+            raise
+        finally:
+            self._running = False
+
+    def run_in_thread(self):
+        """Run the API server in a separate thread"""
+        if self._thread and self._thread.is_alive():
+            logger.warning("API server thread is already running")
+            return self._thread
+            
+        self._thread = threading.Thread(
+            target=self.run,
+            name="API-Server-Thread",
+            daemon=True
         )
+        self._thread.start()
+        return self._thread
 
-# Global instance for easy access
-api_server = None
+    def stop(self):
+        """Stop the API server"""
+        if not self._running:
+            return
+            
+        logger.info("Stopping API server...")
+        try:
+            self.socketio.stop()
+            logger.info("API server stopped")
+        except Exception as e:
+            logger.error(f"Error stopping API server: {e}")
+        finally:
+            self._running = False
 
-def run_api_server(host='0.0.0.0', port=5000, debug=False):
-    """Run the API server (to be called in a separate thread)
+def run_api_server(host: str = '0.0.0.0', port: int = 5000, debug: bool = False) -> 'APIServer':
+    """Create and start the API server in a separate thread
     
     Args:
-        host (str): Host to bind the server to. Defaults to '0.0.0.0'.
-        port (int): Port to bind the server to. Defaults to 5000.
-        debug (bool): Whether to run in debug mode. Defaults to False.
+        host: Host to bind the server to
+        port: Port to bind the server to
+        debug: Whether to run in debug mode
+        
+    Returns:
+        The APIServer instance
     """
-    global api_server
-    api_server = APIServer(host=host, port=port, debug=debug)
-    api_server.run()
+    server = APIServer(host=host, port=port, debug=debug)
+    server.run_in_thread()
+    return server
 
 if __name__ == "__main__":
-    run_api_server()
+    import sys
+    
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description='Run the Fabric Roll Management API server')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind the server to')
+    parser.add_argument('--port', type=int, default=5000, help='Port to bind the server to')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    
+    args = parser.parse_args()
+    
+    print(f"Starting API server on {args.host}:{args.port} (debug: {args.debug})")
+    print("Press Ctrl+C to stop")
+    
+    try:
+        server = run_api_server(host=args.host, port=args.port, debug=args.debug)
+        while True:
+            # Keep the main thread alive
+            import time
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+        server.stop()
+        sys.exit(0)

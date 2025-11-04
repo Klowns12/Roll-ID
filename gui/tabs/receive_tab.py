@@ -360,6 +360,7 @@ class ReceiveTab(QWidget):
             'sku': sku,
             'lot': lot,
             'length': self.manual_length.value(),
+            'default_length': self.manual_length.value(),  # Add default_length
             'width': self.manual_width.value(),
             'grade': self.manual_grade.currentText(),
             'location': self.manual_location.text().strip(),
@@ -402,11 +403,13 @@ class ReceiveTab(QWidget):
         roll_id = f"{sku}-{lot}-001"  # Simple implementation - in a real app, you'd check for existing IDs
         
         # Create roll data
+        length = product.default_length if self.use_default_length.isChecked() else self.master_length.value()
         roll_data = {
             'roll_id': roll_id,
             'sku': sku,
             'lot': lot,
-            'length': product.default_length if self.use_default_length.isChecked() else self.master_length.value(),
+            'length': length,
+            'default_length': length,  # Add default_length
             'grade': product.default_grade,
             'location': self.master_location.text().strip(),
             'date_received': self.master_date.date().toString("yyyy-MM-dd"),

@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, QSortFilterProxyModel, QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator
 import pandas as pd
 import os
+from storage import MasterProduct
 
 class MasterTab(QWidget):
     def __init__(self, storage):
@@ -112,7 +113,7 @@ class MasterTab(QWidget):
             product_data = dialog.get_product_data()
             
             # Create new product
-            product = self.storage.MasterProduct(
+            product = MasterProduct(
                 sku=product_data['sku'],
                 description=product_data['description'],
                 default_length=float(product_data['default_length']),
@@ -244,7 +245,7 @@ class MasterTab(QWidget):
                         continue
                     
                     # Create product
-                    product = self.storage.MasterProduct(
+                    product = MasterProduct(
                         sku=sku,
                         description=description,
                         default_length=default_length,

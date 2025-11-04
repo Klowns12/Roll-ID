@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import config
 from storage import StorageManager
 from gui.main_window import MainWindow
-from api_server import run_api_server as run_flask_in_thread
+from api_server import run_api_server
 
 # Configure logging
 logging.basicConfig(
@@ -48,7 +48,10 @@ class FabricRollApp(QApplication):
         # Initialize components
         self.storage = None
         self.main_window = None
-        self.flask_thread = None
+        self.api_server = None
+        
+        # Set up cleanup on exit
+        self.aboutToQuit.connect(self.cleanup)
         
         # Show splash screen
         self.splash = self.create_splash_screen()
@@ -104,12 +107,13 @@ class FabricRollApp(QApplication):
             )
             self.processEvents()
             
-            # Start Flask API server in a separate thread
-            self.flask_thread = run_flask_in_thread(
+            # Start the API server
+            self.api_server = run_api_server(
                 host=config.get('api.host', '0.0.0.0'),
                 port=config.get('api.port', 5000),
                 debug=config.get('api.debug', False)
             )
+            logger.info(f"API server started on {self.api_server.host}:{self.api_server.port}")
             
             # Update splash screen
             self.splash.showMessage(
@@ -136,24 +140,43 @@ class FabricRollApp(QApplication):
             )
             self.quit()
     
+    def cleanup(self):
+        """Clean up resources before application exit"""
+        logger.info("Cleaning up application resources...")
+        
+        # Close main window
+        if hasattr(self, 'main_window') and self.main_window:
+            try:
+                self.main_window.close()
+            except Exception as e:
+                logger.error(f"Error closing main window: {e}")
+        
+        # Stop the API server
+        if hasattr(self, 'api_server') and self.api_server:
+            logger.info("Stopping API server...")
+            try:
+                self.api_server.stop()
+                logger.info("API server stopped")
+            except Exception as e:
+                logger.error(f"Error stopping API server: {e}")
+        
+        logger.info("Application cleanup complete")
+
     def closeEvent(self, event):
         """Handle application close event"""
         # Clean up resources
-        if self.flask_thread and self.flask_thread.is_alive():
-            # Signal the Flask server to shut down
-            import requests
+        if hasattr(self, 'api_server') and self.api_server:
             try:
-                requests.post(
-                    f"http://{config.get('api.host', '0.0.0.0')}:"
-                    f"{config.get('api.port', 5000)}/shutdown"
-                )
-                self.flask_thread.join(timeout=5)
-            except:
-                pass  # Ignore errors during shutdown
+                self.api_server.stop()
+            except Exception as e:
+                logger.error(f"Error stopping API server: {e}")
         
         # Save any pending changes
         if hasattr(self, 'storage') and self.storage:
-            self.storage.save_all()
+            try:
+                self.storage.save_all()
+            except Exception as e:
+                logger.error(f"Error saving data: {e}")
         
         event.accept()
 
