@@ -8,8 +8,10 @@ from PySide6.QtGui import QIcon, QAction, QPixmap
 from .tabs.dashboard_tab import DashboardTab
 from .tabs.master_tab import MasterTab
 from .tabs.receive_tab import ReceiveTab
+from .tabs.dispatch_tab import DispatchTab
 from .tabs.rolls_tab import RollsTab
 from .tabs.logs_tab import LogsTab
+from .tabs.statistics_tab import StatisticsTab
 
 class MainWindow(QMainWindow):
     def __init__(self, storage):
@@ -42,14 +44,18 @@ class MainWindow(QMainWindow):
         self.dashboard_tab = DashboardTab(self.storage)
         self.master_tab = MasterTab(self.storage)
         self.receive_tab = ReceiveTab(self.storage)
+        self.dispatch_tab = DispatchTab(self.storage)
         self.rolls_tab = RollsTab(self.storage)
         self.logs_tab = LogsTab(self.storage)
+        self.statistics_tab = StatisticsTab(self.storage)
         
         self.tab_widget.addTab(self.dashboard_tab, "Dashboard")
         self.tab_widget.addTab(self.master_tab, "Master Data")
-        self.tab_widget.addTab(self.receive_tab, "Receive Rolls")
-        self.tab_widget.addTab(self.rolls_tab, "Roll Management")
+        self.tab_widget.addTab(self.receive_tab, "รับเข้า / Receive")
+        self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
+        self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
         self.tab_widget.addTab(self.logs_tab, "Logs")
+        self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
         
         layout.addWidget(self.tab_widget)
     

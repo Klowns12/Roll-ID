@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QComboBox, QGroupBox, QSpinBox, QDoubleSpinBox, QToolBar, QStatusBar
 )
 from PySide6.QtCore import Qt, QSortFilterProxyModel, QRegularExpression, QDate
-from PySide6.QtGui import QRegularExpressionValidator, QAction, QIcon
+from PySide6.QtGui import QRegularExpressionValidator, QAction, QIcon, QPixmap
 from datetime import datetime, timedelta
 import qrcode
 from io import BytesIO
@@ -20,6 +20,10 @@ from reportlab.platypus import Paragraph, Table, TableStyle
 from reportlab.lib import colors
 import tempfile
 import os
+import json
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from gui.dialogs import LabelPreviewDialog
 
 class RollsTab(QWidget):
     def __init__(self, storage):
@@ -304,8 +308,24 @@ class RollsTab(QWidget):
             QMessageBox.warning(self, "Error", "Selected roll not found!")
             return
         
+        # Convert roll to dict for preview dialog
+        roll_data = {
+            'roll_id': roll.roll_id,
+            'sku': roll.sku,
+            'lot': roll.lot,
+            'date_received': roll.date_received,
+            'specification': roll.specification,
+            'colour': roll.colour,
+            'packing_unit': roll.packing_unit,
+            'unit_type': roll.unit_type,
+            'grade': roll.grade,
+            'type_of_roll': roll.type_of_roll,
+            'marks_no': roll.marks_no,
+            'current_length': roll.current_length
+        }
+        
         # Generate and show print preview
-        preview = LabelPreviewDialog(roll, self)
+        preview = LabelPreviewDialog(self, roll_data)
         preview.exec()
     
     def export_data(self):
@@ -427,206 +447,3 @@ class CutRollDialog(QDialog):
     def get_notes(self):
         """Get the notes from the dialog"""
         return self.notes_input.text().strip()
-
-
-class LabelPreviewDialog(QDialog):
-    """Dialog for previewing and printing labels"""
-    def __init__(self, roll, parent=None):
-        super().__init__(parent)
-        self.roll = roll
-        self.setup_ui()
-        self.generate_preview()
-    
-    def setup_ui(self):
-        """Set up the dialog UI"""
-        self.setWindowTitle(f"Label Preview: {self.roll.roll_id}")
-        self.setMinimumSize(600, 800)
-        
-        layout = QVBoxLayout(self)
-        
-        # Preview area
-        self.preview_label = QLabel()
-        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview_label.setStyleSheet("background-color: white;")
-        
-        # Buttons
-        btn_layout = QHBoxLayout()
-        
-        self.print_btn = QPushButton("Print Label")
-        self.print_btn.clicked.connect(self.print_label)
-        
-        self.save_pdf_btn = QPushButton("Save as PDF")
-        self.save_pdf_btn.clicked.connect(self.save_as_pdf)
-        
-        self.close_btn = QPushButton("Close")
-        self.close_btn.clicked.connect(self.reject)
-        
-        btn_layout.addWidget(self.print_btn)
-        btn_layout.addWidget(self.save_pdf_btn)
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.close_btn)
-        
-        # Add to layout
-        layout.addWidget(self.preview_label)
-        layout.addLayout(btn_layout)
-    
-    def generate_preview(self):
-        """Generate a preview of the label"""
-        # Create a temporary file for the preview
-        import tempfile
-        import os
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-            # Generate QR code
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=4,
-                border=2,
-            )
-            
-            # Create QR code data
-            qr_data = {
-                'id': self.roll.roll_id,
-                'sku': self.roll.sku,
-                'lot': self.roll.lot,
-                'length': self.roll.current_length,
-                'date': self.roll.date_received
-            }
-            qr.add_data(json.dumps(qr_data, indent=2))
-            qr.make(fit=True)
-            
-            # Create QR code image
-            qr_img = qr.make_image(fill_color="black", back_color="white")
-            qr_img.save(tmp_file.name)
-            
-            # Load the image and scale it for preview
-            pixmap = QPixmap(tmp_file.name)
-            scaled_pixmap = pixmap.scaled(
-                300, 300,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            
-            # Set the preview image
-            self.preview_label.setPixmap(scaled_pixmap)
-            
-            # Clean up
-            os.unlink(tmp_file.name)
-    
-    def print_label(self):
-        """Print the label"""
-        # In a real implementation, this would send the label to a printer
-        QMessageBox.information(
-            self,
-            "Print Label",
-            f"In a full implementation, this would print the label for {self.roll.roll_id}"
-        )
-    
-    def save_as_pdf(self):
-        """Save the label as a PDF file"""
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Label as PDF",
-            f"label_{self.roll.roll_id}.pdf",
-            "PDF Files (*.pdf)"
-        )
-        
-        if not file_path:
-            return  # User cancelled
-        
-        try:
-            # Create PDF
-            c = canvas.Canvas(file_path, pagesize=A4)
-            width, height = A4
-            
-            # Draw border
-            c.setLineWidth(1)
-            c.rect(20*mm, 20*mm, width-40*mm, height-40*mm)
-            
-            # Add title
-            c.setFont("Helvetica-Bold", 16)
-            c.drawCentredString(width/2, height-30*mm, "Fabric Roll Label")
-            
-            # Add roll info
-            c.setFont("Helvetica", 12)
-            y_pos = height - 50*mm
-            c.drawString(30*mm, y_pos, f"Roll ID: {self.roll.roll_id}")
-            y_pos -= 8*mm
-            c.drawString(30*mm, y_pos, f"SKU: {self.roll.sku}")
-            y_pos -= 8*mm
-            c.drawString(30*mm, y_pos, f"Lot: {self.roll.lot}")
-            y_pos -= 8*mm
-            c.drawString(30*mm, y_pos, f"Length: {self.roll.current_length:.2f} m")
-            y_pos -= 8*mm
-            c.drawString(30*mm, y_pos, f"Date: {self.roll.date_received}")
-            
-            # Add QR code
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=4,
-                border=2,
-            )
-            
-            # Create QR code data
-            qr_data = {
-                'id': self.roll.roll_id,
-                'sku': self.roll.sku,
-                'lot': self.roll.lot,
-                'length': self.roll.current_length,
-                'date': self.roll.date_received
-            }
-            qr.add_data(json.dumps(qr_data, indent=2))
-            qr.make(fit=True)
-            
-            # Create QR code image in memory
-            qr_img = qr.make_image(fill_color="black", back_color="white")
-            
-            # Save QR code to a temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                qr_img.save(tmp_file.name)
-                # Add QR code to PDF
-                c.drawImage(
-                    tmp_file.name,
-                    width - 70*mm,
-                    height - 100*mm,
-                    width=40*mm,
-                    height=40*mm,
-                    preserveAspectRatio=True
-                )
-                # Clean up
-                os.unlink(tmp_file.name)
-            
-            # Add barcode
-            barcode_value = self.roll.roll_id
-            barcode = code128.Code128(
-                barcode_value,
-                barHeight=20*mm,
-                barWidth=1.2
-            )
-            
-            # Draw barcode
-            barcode.drawOn(c, 30*mm, 30*mm)
-            c.setFont("Helvetica", 10)
-            c.drawCentredString(
-                width/2,
-                25*mm,
-                barcode_value
-            )
-            
-            # Save the PDF
-            c.save()
-            
-            QMessageBox.information(
-                self,
-                "PDF Saved",
-                f"Label saved as:\n{file_path}"
-            )
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Failed to save PDF:\n{str(e)}"
-            )

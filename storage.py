@@ -9,23 +9,41 @@ import uuid
 
 @dataclass
 class Roll:
-    roll_id: str
-    sku: str
-    lot: str
-    current_length: float
-    original_length: float
-    location: str
-    grade: str
-    marks_no: str
-    date_received: str
+    roll_id: str  # pdt_code_RollID
+    sku: str  # pdt_code
+    lot: str  # Lot_of_SPL
+    current_length: float  # availableqty
+    original_length: float  # RollQTY
+    location: str  # Location
+    grade: str  # grade
+    date_received: str  # create_date
+    marks_no: str = ""  # MARKS NO.
     status: str = "active"
+    # เพิ่มฟิลด์ใหม่ตาม requirement
+    invoice_number: str = ""  # Invoice_Number
+    po_number: str = ""  # PO_Number
+    spl_name: str = ""  # spl_name
+    type_of_roll: str = ""  # TypeOfRoll
+    unit_type: str = "MTS"  # unit_type
+    scrap_qty: float = 0.0  # scrapqty
+    specification: str = ""  # SPECIFICATION
+    colour: str = ""  # COLOUR
+    packing_unit: str = ""  # PACKING UNIT
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Roll':
-        return cls(**data)
+        # สร้าง Roll object โดยใช้เฉพาะฟิลด์ที่มีใน dataclass
+        valid_fields = {
+            'roll_id', 'sku', 'lot', 'current_length', 'original_length',
+            'location', 'grade', 'date_received', 'marks_no', 'status',
+            'invoice_number', 'po_number', 'spl_name', 'type_of_roll',
+            'unit_type', 'scrap_qty', 'specification', 'colour', 'packing_unit'
+        }
+        filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+        return cls(**filtered_data)
 
 @dataclass
 class MasterProduct:
@@ -153,6 +171,10 @@ class StorageManager:
     def get_roll(self, roll_id: str) -> Optional[Roll]:
         """Get a roll by ID"""
         return self._rolls.get(roll_id)
+    
+    def get_roll_by_id(self, roll_id: str) -> Optional[Roll]:
+        """Get a roll by ID (alias for get_roll)"""
+        return self.get_roll(roll_id)
     
     def update_roll(self, roll_id: str, **updates) -> bool:
         """Update roll attributes"""
@@ -284,3 +306,57 @@ class StorageManager:
                 results.append(roll)
         
         return results
+    
+    # Statistics operations
+    def get_roll_types_count(self, start_date: str = None, end_date: str = None) -> Dict[str, int]:
+        """Get count of rolls by type (based on type_of_roll field)"""
+        type_counts = {}
+        
+        for roll in self._rolls.values():
+            # Filter by date if provided
+            if start_date and end_date:
+                if roll.date_received < start_date or roll.date_received >= end_date:
+                    continue
+            
+            roll_type = roll.type_of_roll if roll.type_of_roll else "Standard"
+            type_counts[roll_type] = type_counts.get(roll_type, 0) + 1
+        
+        return type_counts if type_counts else {"Standard": len(self._rolls)}
+    
+    def get_roll_statuses_count(self, start_date: str = None, end_date: str = None) -> Dict[str, int]:
+        """Get count of rolls by status"""
+        status_counts = {}
+        
+        for roll in self._rolls.values():
+            # Filter by date if provided
+            if start_date and end_date:
+                if roll.date_received < start_date or roll.date_received >= end_date:
+                    continue
+            
+            status = roll.status.capitalize()
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        return status_counts
+    
+    def get_rolls_by_date_range(self, start_date: str, end_date: str) -> List[tuple]:
+        """Get rolls within a date range for detailed table"""
+        results = []
+        
+        for roll in self._rolls.values():
+            if roll.date_received >= start_date and roll.date_received < end_date:
+                results.append((
+                    roll.date_received,
+                    roll.sku,
+                    roll.type_of_roll if roll.type_of_roll else "Standard",
+                    f"{roll.current_length:.2f}",
+                    roll.status.capitalize()
+                ))
+        
+        # Sort by date
+        results.sort(key=lambda x: x[0], reverse=True)
+        
+        return results
+    
+    def save_master_products(self):
+        """Public method to save master products"""
+        self._save_master_products()

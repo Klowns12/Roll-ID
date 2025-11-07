@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, has_request_context
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import threading
@@ -172,16 +172,21 @@ class APIServer:
         return self._thread
 
     def stop(self):
-        """Stop the API server"""
+        """Stop the API server safely (no request context error)"""
         if not self._running:
             return
-            
+
         logger.info("Stopping API server...")
         try:
-            self.socketio.stop()
+            # ตรวจสอบก่อนว่ามี request context หรือไม่
+            if has_request_context():
+                self.socketio.stop()
+            else:
+                # ไม่มี request context ก็ไม่ต้องเรียก stop ผ่าน Flask
+                logger.info("No active request context; skipping Flask shutdown.")
             logger.info("API server stopped")
         except Exception as e:
-            logger.error(f"Error stopping API server: {e}")
+            logger.warning(f"Error stopping API server (safe mode): {e}")
         finally:
             self._running = False
 

@@ -216,15 +216,35 @@ class MasterTab(QWidget):
             else:
                 df = pd.read_csv(file_path)
             
+            # Normalize column names (lowercase, strip whitespace)
+            df.columns = df.columns.str.lower().str.strip()
+            
+            # Map column names (support multiple naming conventions)
+            column_mapping = {
+                'pdt_code': 'sku',
+                'pdt_name': 'description',
+                'pdt_name_en': 'description',
+                'unit_cost': 'default_length',
+                'pdt_color': 'color',
+                'pdt_size': 'size',
+                'location': 'location'
+            }
+            
+            # Rename columns based on mapping
+            df = df.rename(columns=column_mapping)
+            
             # Check required columns
-            required_columns = ['sku', 'description', 'default_length']
-            missing_columns = [col for col in required_columns if col not in df.columns]
+            required_columns = ['sku', 'description']
+            available_columns = df.columns.tolist()
+            missing_columns = [col for col in required_columns if col not in available_columns]
             
             if missing_columns:
                 QMessageBox.critical(
                     self,
                     "Import Error",
-                    f"Missing required columns: {', '.join(missing_columns)}"
+                    f"Missing required columns: {', '.join(missing_columns)}\n\n"
+                    f"Required: sku (or pdt_code), description (or pdt_name)\n"
+                    f"Optional: default_length (or unit_cost), default_grade"
                 )
                 return
             
@@ -232,11 +252,12 @@ class MasterTab(QWidget):
             success_count = 0
             error_count = 0
             
-            for _, row in df.iterrows():
+            for idx, row in df.iterrows():
                 try:
                     sku = str(row['sku']).strip()
                     description = str(row['description']).strip()
-                    default_length = float(row['default_length'])
+                    # Use default_length if available, otherwise use unit_cost
+                    default_length = float(row.get('default_length', row.get('unit_cost', 0)))
                     default_grade = str(row.get('default_grade', 'A')).strip()
                     
                     # Skip if SKU is empty
@@ -260,7 +281,7 @@ class MasterTab(QWidget):
                 
                 except Exception as e:
                     error_count += 1
-                    print(f"Error importing row {_}: {str(e)}")
+                    print(f"Error importing row {idx}: {str(e)}")
             
             # Show results
             msg = f"Import complete!\n\n" \
