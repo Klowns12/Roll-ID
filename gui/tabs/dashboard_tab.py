@@ -35,6 +35,10 @@ class DashboardTab(QWidget):
         stats_layout = QHBoxLayout()
         
         # Total Rolls card
+        self.total_master_data_card = self.create_stat_card("Total Master Data", "0", "#95db34")
+        stats_layout.addWidget(self.total_master_data_card)
+
+        # Total Rolls card
         self.total_rolls_card = self.create_stat_card("Total Rolls", "0", "#3498db")
         stats_layout.addWidget(self.total_rolls_card)
         
@@ -43,8 +47,8 @@ class DashboardTab(QWidget):
         stats_layout.addWidget(self.active_rolls_card)
         
         # Low Stock card
-        self.low_stock_card = self.create_stat_card("Low Stock", "0", "#e74c3c")
-        stats_layout.addWidget(self.low_stock_card)
+        # self.low_stock_card = self.create_stat_card("Low Stock", "0", "#e74c3c")
+        # stats_layout.addWidget(self.low_stock_card)
         
         # Recent Activities card
         self.recent_activities_card = self.create_stat_card("Today's Activities", "0", "#9b59b6")
@@ -150,23 +154,19 @@ class DashboardTab(QWidget):
     
     def update_stats_cards(self):
         """Update the statistics cards with current data"""
-        # Get all rolls
-        rolls = self.storage.search_rolls()
+       
+        self.total_master_data_card.findChild(QLabel).setText(str(self.storage.get_master_data_count()))
+
+        self.total_rolls_card.findChild(QLabel).setText(str(self.storage.get_roll_count()))
         
-        # Update total rolls
-        total_rolls = len(rolls)
-        self.total_rolls_card.findChild(QLabel).setText(str(total_rolls))
-        
-        # Update active rolls (status = 'active')
-        active_rolls = sum(1 for roll in rolls if roll.status == 'active')
-        self.active_rolls_card.findChild(QLabel).setText(str(active_rolls))
+        self.active_rolls_card.findChild(QLabel).setText(str(self.storage.get_roll_active_count()))
         
         # Update low stock (rolls with length < 10% of original)
-        low_stock = 0
-        for roll in rolls:
-            if roll.original_length > 0 and (roll.current_length / roll.original_length) < 0.1:
-                low_stock += 1
-        self.low_stock_card.findChild(QLabel).setText(str(low_stock))
+        # low_stock = 0
+        # for roll in rolls:
+        #     if roll.original_length > 0 and (roll.current_length / roll.original_length) < 0.1:
+        #         low_stock += 1
+        # self.low_stock_card.findChild(QLabel).setText(str(low_stock))
         
         # Update today's activities
         today = datetime.now().date()

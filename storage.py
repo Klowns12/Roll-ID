@@ -132,6 +132,9 @@ class StorageManager:
     # Roll Operations
     # ----------------------------------------------------------------
     def add_roll(self, roll: Roll) -> bool:
+        print('-------- before add roll data ----------')
+        print(roll)
+        print('-----------------')
         with self._connect() as conn:
             cur = conn.cursor()
             try:
@@ -154,7 +157,8 @@ class StorageManager:
                 "sku": roll.sku,
                 "lot": roll.lot,
                 "length": roll.original_length,
-                "location": roll.location
+                "location": roll.location,
+
             }
         )
         return True
@@ -203,6 +207,46 @@ class StorageManager:
         )
         return True
 
+    def get_master_data_count(self, roll_id: Optional[str] = None) -> int:
+        """นับจำนวนแถวใน master_products (ทั้งหมด หรือเฉพาะ roll_id)"""
+        with self._connect() as conn:
+            if roll_id:
+                cur = conn.execute(
+                    "SELECT COUNT(*) FROM master_products WHERE roll_id = ?",
+                    (roll_id,)
+                )
+            else:
+                cur = conn.execute("SELECT COUNT(*) FROM master_products")
+            count = cur.fetchone()[0]
+        return count
+
+    def get_roll_count(self, roll_id: Optional[str] = None) -> int:
+        """นับจำนวนแถวใน rolls (ทั้งหมด หรือเฉพาะ roll_id)"""
+        with self._connect() as conn:
+            if roll_id:
+                cur = conn.execute(
+                    "SELECT COUNT(*) FROM rolls WHERE roll_id = ?",
+                    (roll_id,)
+                )
+            else:
+                cur = conn.execute("SELECT COUNT(*) FROM rolls")
+            count = cur.fetchone()[0]
+        return count
+    
+    def get_roll_active_count(self, roll_id: Optional[str] = None) -> int:
+            """นับจำนวนแถวใน rolls (ทั้งหมด หรือเฉพาะ roll_id)"""
+            with self._connect() as conn:
+                if roll_id:
+                    cur = conn.execute(
+                        "SELECT COUNT(*) FROM rolls WHERE roll_id = ? AND status = 'active'",
+                        (roll_id,)
+                    )
+                else:
+                    cur = conn.execute("SELECT COUNT(*) FROM rolls WHERE status = 'active'")
+                count = cur.fetchone()[0]
+            return count
+
+    
     # ----------------------------------------------------------------
     # Master Product Operations
     # ----------------------------------------------------------------

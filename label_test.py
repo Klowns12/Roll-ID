@@ -17,7 +17,7 @@ if __name__ == "__main__":
     }
 
     # สร้าง label
-    label_img = generator.create_mini_label(roll_data)
+    label_img = generator.create_label(roll_data)
 
     # แปลงจาก PIL → OpenCV
     label_cv = cv2.cvtColor(np.array(label_img), cv2.COLOR_RGB2BGR)

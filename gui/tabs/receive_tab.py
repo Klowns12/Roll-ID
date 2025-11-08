@@ -1153,10 +1153,7 @@ class ReceiveTab(QWidget):
             )
             
             # Clear the form
-            if self.tabs.currentWidget() == self.manual_tab:
-                self.clear_manual_form()
-            else:
-                self.clear_master_form()
+            self.clear_manual_form()
             
             # Get main window and emit signal to Rolls Tab
             main_window = self.window()
@@ -1167,7 +1164,7 @@ class ReceiveTab(QWidget):
             
             # Switch to the rolls tab in the main window
             if hasattr(main_window, 'tab_widget'):
-                main_window.tab_widget.setCurrentIndex(4)  # Updated index for rolls tab
+                main_window.tab_widget.setCurrentIndex(3)  # Updated index for rolls tab
                 
         except Exception as e:
             QMessageBox.critical(
@@ -1310,10 +1307,8 @@ class ReceiveTab(QWidget):
             }
             
             # สร้างฉลาก
-            if "เล็ก" in label_type:
-                label_img = self.label_generator.create_mini_label(roll_data)
-            else:
-                label_img = self.label_generator.create_label(roll_data)
+            label_img = self.label_generator.create_label(roll_data)
+
             
             # แปลงเป็น QPixmap
             buffer = self.label_generator.get_label_as_bytes(label_img)

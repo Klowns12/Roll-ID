@@ -23,215 +23,120 @@ class LabelGenerator:
         self.color_text = (0, 0, 0)  # สีตัวอักษร
         self.color_header_bg = (33, 150, 243)  # สีพื้นหลังหัวเรื่อง
         self.color_header_text = (255, 255, 255)  # สีตัวอักษรหัวเรื่อง
-    
+
+
     def create_label(self, roll_data, include_qr=True):
         """
-        สร้างฉลากม้วนผ้า
+        สร้างฉลากขนาด 10x5 เซนติเมตร (300 DPI)
         
         Args:
             roll_data: dict ข้อมูลม้วนผ้า
-                - roll_id: เลขม้วน
-                - sku: รหัสสินค้า
-                - lot: เลข lot
-                - length: ความยาว (cm)
-                - grade: เกรด (A, B, C)
-                - date_received: วันที่รับเข้า
-                - location: สถานที่จัดเก็บ
             include_qr: bool รวม QR Code หรือไม่
-        
-        Returns:
-            PIL.Image: รูปฉลาก
-        """
-        # สร้าง image พื้นหลัง
-        img = Image.new('RGB', (self.label_width, self.label_height), self.color_bg)
-        draw = ImageDraw.Draw(img)
-        
-        # วาดขอบ
-        border_width = 10
-        draw.rectangle(
-            [border_width, border_width, 
-             self.label_width - border_width, 
-             self.label_height - border_width],
-            outline=self.color_border,
-            width=5
-        )
-        
-        y_position = 30
-        
-        # Header
-        header_height = 120
-        draw.rectangle(
-            [border_width + 10, y_position, 
-             self.label_width - border_width - 10, 
-             y_position + header_height],
-            fill=self.color_header_bg
-        )
-        
-        # ชื่อระบบ
-        try:
-            header_font = ImageFont.truetype("arial.ttf", 48)
-        except:
-            header_font = ImageFont.load_default()
-        
-        header_text = "FABRIC ROLL"
-        header_bbox = draw.textbbox((0, 0), header_text, font=header_font)
-        header_width = header_bbox[2] - header_bbox[0]
-        draw.text(
-            ((self.label_width - header_width) / 2, y_position + 35),
-            header_text,
-            fill=self.color_header_text,
-            font=header_font
-        )
-        
-        y_position += header_height + 40
-        
-        # QR Code (ถ้าต้องการ)
-        if include_qr:
-            qr_data = roll_data.get('roll_id', '')
-            qr_img = self.generate_qr_code(qr_data, size=400)
-            
-            # วาง QR Code ตรงกลาง
-            qr_x = (self.label_width - qr_img.width) // 2
-            img.paste(qr_img, (qr_x, y_position))
-            y_position += qr_img.height + 30
-        
-        # ข้อมูลม้วนผ้า
-        try:
-            data_font_large = ImageFont.truetype("arialbd.ttf", 56)
-            data_font_medium = ImageFont.truetype("arial.ttf", 40)
-            data_font_small = ImageFont.truetype("arial.ttf", 32)
-        except:
-            data_font_large = ImageFont.load_default()
-            data_font_medium = ImageFont.load_default()
-            data_font_small = ImageFont.load_default()
-        
-        # เลขม้วน (ขนาดใหญ่)
-        roll_id = roll_data.get('roll_id', 'N/A')
-        self._draw_centered_text(
-            draw, roll_id, y_position, 
-            data_font_large, self.label_width, bold=True
-        )
-        y_position += 80
-        
-        # เส้นแบ่ง
-        self._draw_separator(draw, y_position)
-        y_position += 30
-        
-        # ข้อมูลในรูปแบบตาราง
-        padding_left = 100
-        line_spacing = 70
-        
-        data_fields = [
-            ("SKU:", roll_data.get('sku', 'N/A')),
-            ("LOT:", roll_data.get('lot', 'N/A')),
-            ("LENGTH:", f"{roll_data.get('length', 0):.2f} cm"),
-            ("GRADE:", roll_data.get('grade', 'A')),
-            ("DATE:", roll_data.get('date_received', datetime.now().strftime("%Y-%m-%d"))),
-            ("LOCATION:", roll_data.get('location', '-'))
-        ]
-        
-        for label, value in data_fields:
-            # วาด label
-            draw.text(
-                (padding_left, y_position),
-                label,
-                fill=self.color_text,
-                font=data_font_medium
-            )
-            
-            # วาด value (ขยับไปทางขวา)
-            draw.text(
-                (padding_left + 300, y_position),
-                str(value),
-                fill=self.color_text,
-                font=data_font_large if label in ["SKU:", "LENGTH:"] else data_font_medium
-            )
-            
-            y_position += line_spacing
-        
-        # Footer
-        y_position = self.label_height - 150
-        self._draw_separator(draw, y_position)
-        y_position += 20
-        
-        footer_text = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        self._draw_centered_text(
-            draw, footer_text, y_position,
-            data_font_small, self.label_width
-        )
-        
-        return img
-    
-    def create_mini_label(self, roll_data):
-        """
-        สร้างฉลากขนาดเล็ก (สำหรับติดม้วน)
-        
-        Args:
-            roll_data: dict ข้อมูลม้วนผ้า
         
         Returns:
             PIL.Image: รูปฉลากขนาดเล็ก
         """
-        # ขนาดเล็กลง (4x3 นิ้ว ที่ 300 DPI)
-        width = 1200
-        height = 900
         
+        roll_data_mock = {
+            'roll_id': 'R1',
+            'sku': 'F1',
+            'product_name': 'Product Test1',
+            'lot': 'LOT1234',
+            'date_received': '2025-11-09',
+            'specification': '100% Cotton Test Specification',
+            'colour': 'Blue',
+            'packing_unit': 'Meter',
+            'unit_type': 'MTS',
+            'grade': 'A',
+            'type_of_roll': '',
+            'marks_no': '',
+            'current_length': 100.0
+        }
+
+
+
+        # ขนาดพิกเซล 300 DPI
+        width = int(10 * 300 / 2.54)  # 10 cm
+        height = int(5 * 300 / 2.54)  # 5 cm
+
         img = Image.new('RGB', (width, height), self.color_bg)
         draw = ImageDraw.Draw(img)
         
         # วาดขอบ
-        draw.rectangle([10, 10, width - 10, height - 10], outline=self.color_border, width=3)
+        draw.rectangle([5, 5, width - 5, height - 5], outline=self.color_border, width=2)
         
+
+        # กำหนดลำดับของคีย์ที่ต้องการ
+        keys_order = [
+            'roll_id', 'sku', 'lot', 'date_received', 'specification',
+            'colour', 'packing_unit', 'unit_type', 'grade', 'type_of_roll',
+            'marks_no', 'current_length'
+        ]
+
+        # สร้าง format string
+        formatted = '%'.join(str(roll_data_mock.get(k)) if roll_data_mock.get(k) not in (None, '') else '-' for k in keys_order)
+
+
+        qr_string = formatted
+
+ 
+
         # QR Code ขนาดเล็ก
-        qr_size = 250
-        qr_data = roll_data.get('roll_id', '')
-        qr_img = self.generate_qr_code(qr_data, size=qr_size)
+        if include_qr:
+            qr_size = 340
+            qr_img = self.generate_qr_code(qr_string, size=qr_size)
+            qr_x = (width - qr_size) - 20
+            qr_y = (height - qr_size) - 20
+            img.paste(qr_img, (qr_x, qr_y))
         
-        # วาง QR Code ทางซ้าย
-        qr_margin = 40
-        img.paste(qr_img, (qr_margin, qr_margin))
-        
-        # ข้อมูลทางขวา
+        # ข้อมูลทางขวาของ QR Code
         try:
-            font_large = ImageFont.truetype("arialbd.ttf", 40)
-            font_medium = ImageFont.truetype("arial.ttf", 32)
-            font_small = ImageFont.truetype("arial.ttf", 24)
+            font_large = ImageFont.truetype("arialbd.ttf", 34)
+            font_medium = ImageFont.truetype("arial.ttf", 24)
+            font_small = ImageFont.truetype("arial.ttf", 20)
         except:
             font_large = ImageFont.load_default()
             font_medium = ImageFont.load_default()
             font_small = ImageFont.load_default()
-        
-        text_x = qr_margin + qr_size + 50
-        y = 50
-        line_height = 60
-        
+
+        t_x = 50 
+        t_y = 200
+        t_gap = 60
+
         # เลขม้วน
-        draw.text((text_x, y), roll_data.get('roll_id', 'N/A'), 
-                 fill=self.color_text, font=font_large)
-        y += line_height
+        draw.text((t_x, t_y + (t_gap * 0)), f"SPECIFICAT ON : {roll_data_mock['specification']}", 
+                fill=self.color_text, font=font_large)
         
-        # SKU
-        draw.text((text_x, y), f"SKU: {roll_data.get('sku', 'N/A')}", 
-                 fill=self.color_text, font=font_medium)
-        y += line_height
+        draw.text((t_x, t_y + (t_gap * 1)), f"PRODUCT : {roll_data_mock['product_name']}", 
+                fill=self.color_text, font=font_large)
         
-        # Length
-        draw.text((text_x, y), f"{roll_data.get('length', 0):.2f} cm", 
-                 fill=self.color_text, font=font_large)
-        y += line_height
+        draw.text((t_x, t_y + (t_gap * 2)), f"COLOR : {roll_data_mock['colour']}", 
+                fill=self.color_text, font=font_large)
         
-        # Grade
-        draw.text((text_x, y), f"Grade: {roll_data.get('grade', 'A')}", 
-                 fill=self.color_text, font=font_medium)
-        y += line_height
+        draw.text((t_x, t_y + (t_gap * 3)), f"PACKING UNIT : {roll_data_mock['packing_unit']}", 
+                fill=self.color_text, font=font_large)
         
-        # Date (ด้านล่าง)
-        date_text = roll_data.get('date_received', datetime.now().strftime("%Y-%m-%d"))
-        draw.text((qr_margin, height - 50), date_text, 
-                 fill=self.color_text, font=font_small)
+        draw.text((t_x, t_y + (t_gap * 4)), f"GRADE : {roll_data_mock['grade']}", 
+                fill=self.color_text, font=font_large)
+        
+
+
+        draw.text((width - 350, t_y - t_gap), "DATE  xx/xx/xxxx", 
+                fill=self.color_text, font=font_large)
+
+
+        lot_x = width - 400
+        lot_y = 70
+
+        draw.text((lot_x, lot_y), "LOT.", 
+                fill=self.color_text, font=font_large)
+
+        draw.text((lot_x + 100, lot_y - 20), f'{roll_data_mock['lot']}', 
+                fill=self.color_text, font=ImageFont.truetype("arialbd.ttf", 64))
+
         
         return img
-    
+   
     def generate_qr_code(self, data, size=300):
         """
         สร้าง QR Code

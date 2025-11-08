@@ -194,17 +194,17 @@ class RollsTab(QWidget):
                 self.load_data()
                 
                 # Ask if user wants to create QR Code and Label
-                reply = QMessageBox.question(
-                    self,
-                    "สร้าง QR Code และฉลาก / Create QR Code and Label",
-                    f"ต้องการสร้าง QR Code และฉลากสำหรับม้วน {roll.roll_id} หรือไม่?\n\n"
-                    f"Do you want to create QR Code and label for roll {roll.roll_id}?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes
-                )
+                # reply = QMessageBox.question(
+                #     self,
+                #     "สร้าง QR Code และฉลาก / Create QR Code and Label",
+                #     f"ต้องการสร้าง QR Code และฉลากสำหรับม้วน {roll.roll_id} หรือไม่?\n\n"
+                #     f"Do you want to create QR Code and label for roll {roll.roll_id}?",
+                #     QMessageBox.Yes | QMessageBox.No,
+                #     QMessageBox.Yes
+                # )
                 
-                if reply == QMessageBox.Yes:
-                    self.create_qr_and_label(roll)
+                # if reply == QMessageBox.Yes:
+                #     self.create_qr_and_label(roll)
             else:
                 QMessageBox.warning(
                     self,
@@ -453,6 +453,7 @@ class RollsTab(QWidget):
             QMessageBox.warning(self, "Error", "Selected roll not found!")
             return
         
+        print(roll)
         # Convert roll to dict for preview dialog
         roll_data = {
             'roll_id': roll.roll_id,

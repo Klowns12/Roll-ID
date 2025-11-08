@@ -19,7 +19,6 @@ class LabelPreviewDialog(QDialog):
         super().__init__(parent)
         self.roll_data = roll_data
         self.label_image = None
-        self.mini = mini  # ใช้ mini label หรือ full size
         self.generator = LabelGenerator()  # ใช้ LabelGenerator
         self.setWindowTitle(f"Label Preview - {roll_data['roll_id']}")
         self.setGeometry(100, 100, 800, 600)
@@ -67,10 +66,7 @@ class LabelPreviewDialog(QDialog):
     def generate_label(self):
         """Generate label using LabelGenerator"""
         try:
-            if self.mini:
-                self.label_image = self.generator.create_mini_label(self.roll_data)
-            else:
-                self.label_image = self.generator.create_label(self.roll_data)
+            self.label_image = self.generator.create_label(self.roll_data)
             
             self.display_preview()
         except Exception as e:

@@ -222,8 +222,8 @@ class MasterTab(QWidget):
             # Map column names (support multiple naming conventions)
             column_mapping = {
                 'pdt_code': 'sku',
-                'pdt_name': 'description',
-                'pdt_name_en': 'description',
+                'pdt_name': 'description1',
+                'pdt_name_en': 'description2',
                 'unit_cost': 'default_length',
                 'pdt_color': 'color',
                 'pdt_size': 'size',
@@ -234,7 +234,7 @@ class MasterTab(QWidget):
             df = df.rename(columns=column_mapping)
             
             # Check required columns
-            required_columns = ['sku', 'description']
+            required_columns = ['sku', 'description1']
             available_columns = df.columns.tolist()
             missing_columns = [col for col in required_columns if col not in available_columns]
             
@@ -255,16 +255,18 @@ class MasterTab(QWidget):
             for idx, row in df.iterrows():
                 try:
                     sku = str(row['sku']).strip()
-                    description = str(row['description']).strip()
+            
+                    description = str(row['description1']).strip()
                     # Use default_length if available, otherwise use unit_cost
-                    default_length = float(row.get('default_length', row.get('unit_cost', 0)))
-                    default_grade = str(row.get('default_grade', 'A')).strip()
+                    default_length = -1
+                    default_grade = "-"
                     
                     # Skip if SKU is empty
                     if not sku:
                         error_count += 1
                         continue
                     
+                
                     # Create product
                     product = MasterProduct(
                         sku=sku,
@@ -328,8 +330,8 @@ class MasterTab(QWidget):
             
             df = pd.DataFrame(data)
             
-            # Save to CSV
-            df.to_csv(file_path, index=False)
+            # Save to CSV with utf-8-sig encoding (รองรับภาษาไทย)
+            df.to_csv(file_path, index=False, encoding='utf-8-sig')
             
             QMessageBox.information(
                 self,
