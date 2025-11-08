@@ -14,8 +14,7 @@ def import_master_data(csv_file):
     """Import master data from CSV file"""
     
     # Initialize storage with data directory
-    data_dir = os.path.join(os.path.dirname(__file__), 'data')
-    storage = StorageManager(data_dir)
+    storage = StorageManager(os.path.join(os.getcwd(), "data"))
     
     # Read CSV
     df = pd.read_csv(csv_file)

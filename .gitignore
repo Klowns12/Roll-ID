@@ -1,4 +1,6 @@
 /venv
-/__pycache__
 /gui/__pycache__
 /gui/tabs/__pycache__
+
+__pycache__/
+*.pyc

@@ -162,47 +162,6 @@ class LabelGenerator:
         
         return img
     
-    def generate_qr_code(self, data, size=300):
-        """
-        สร้าง QR Code
-        
-        Args:
-            data: ข้อมูลที่จะเข้ารหัส
-            size: ขนาดของ QR Code (พิกเซล)
-        
-        Returns:
-            PIL.Image: QR Code image
-        """
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_H,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(data)
-        qr.make(fit=True)
-        
-        qr_img = qr.make_image(fill_color="black", back_color="white")
-        qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
-        
-        return qr_img
-    
-    def _draw_centered_text(self, draw, text, y, font, width, bold=False):
-        """วาดข้อความตรงกลาง"""
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        x = (width - text_width) / 2
-        draw.text((x, y), text, fill=self.color_text, font=font)
-    
-    def _draw_separator(self, draw, y):
-        """วาดเส้นแบ่ง"""
-        margin = 80
-        draw.line(
-            [(margin, y), (self.label_width - margin, y)],
-            fill=self.color_border,
-            width=2
-        )
-    
     def create_mini_label(self, roll_data):
         """
         สร้างฉลากขนาดเล็ก (สำหรับติดม้วน)
@@ -272,6 +231,47 @@ class LabelGenerator:
                  fill=self.color_text, font=font_small)
         
         return img
+    
+    def generate_qr_code(self, data, size=300):
+        """
+        สร้าง QR Code
+        
+        Args:
+            data: ข้อมูลที่จะเข้ารหัส
+            size: ขนาดของ QR Code (พิกเซล)
+        
+        Returns:
+            PIL.Image: QR Code image
+        """
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(data)
+        qr.make(fit=True)
+        
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
+        
+        return qr_img
+    
+    def _draw_centered_text(self, draw, text, y, font, width, bold=False):
+        """วาดข้อความตรงกลาง"""
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (width - text_width) / 2
+        draw.text((x, y), text, fill=self.color_text, font=font)
+    
+    def _draw_separator(self, draw, y):
+        """วาดเส้นแบ่ง"""
+        margin = 80
+        draw.line(
+            [(margin, y), (self.label_width - margin, y)],
+            fill=self.color_border,
+            width=2
+        )
     
     def save_label(self, image, filename, format='PNG'):
         """

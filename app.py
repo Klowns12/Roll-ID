@@ -97,7 +97,7 @@ class FabricRollApp(QApplication):
             self.processEvents()
             
             # Initialize storage
-            self.storage = StorageManager(config.get('app.data_dir', 'data'))
+            self.storage = StorageManager(os.path.join(os.getcwd(), "data"))
             
             # Update splash screen
             self.splash.showMessage(

@@ -1,49 +1,42 @@
-import json
 import os
+import json
+import sqlite3
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
-import threading
 from datetime import datetime
 from dataclasses import dataclass, asdict
+import threading
 import uuid
 
+
+# --------------------------------------------------------------------
+# Data Models
+# --------------------------------------------------------------------
 @dataclass
 class Roll:
-    roll_id: str  # pdt_code_RollID
-    sku: str  # pdt_code
-    lot: str  # Lot_of_SPL
-    current_length: float  # availableqty
-    original_length: float  # RollQTY
-    location: str  # Location
-    grade: str  # grade
-    date_received: str  # create_date
-    marks_no: str = ""  # MARKS NO.
+    roll_id: str
+    sku: str
+    lot: str
+    current_length: float
+    original_length: float
+    location: str
+    grade: str
+    date_received: str
+    marks_no: str = ""
     status: str = "active"
-    # เพิ่มฟิลด์ใหม่ตาม requirement
-    invoice_number: str = ""  # Invoice_Number
-    po_number: str = ""  # PO_Number
-    spl_name: str = ""  # spl_name
-    type_of_roll: str = ""  # TypeOfRoll
-    unit_type: str = "MTS"  # unit_type
-    scrap_qty: float = 0.0  # scrapqty
-    specification: str = ""  # SPECIFICATION
-    colour: str = ""  # COLOUR
-    packing_unit: str = ""  # PACKING UNIT
-    
+    invoice_number: str = ""
+    po_number: str = ""
+    spl_name: str = ""
+    type_of_roll: str = ""
+    unit_type: str = "MTS"
+    scrap_qty: float = 0.0
+    specification: str = ""
+    colour: str = ""
+    packing_unit: str = ""
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Roll':
-        # สร้าง Roll object โดยใช้เฉพาะฟิลด์ที่มีใน dataclass
-        valid_fields = {
-            'roll_id', 'sku', 'lot', 'current_length', 'original_length',
-            'location', 'grade', 'date_received', 'marks_no', 'status',
-            'invoice_number', 'po_number', 'spl_name', 'type_of_roll',
-            'unit_type', 'scrap_qty', 'specification', 'colour', 'packing_unit'
-        }
-        filtered_data = {k: v for k, v in data.items() if k in valid_fields}
-        return cls(**filtered_data)
+
 
 @dataclass
 class MasterProduct:
@@ -51,13 +44,10 @@ class MasterProduct:
     description: str
     default_length: float
     default_grade: str = "A"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'MasterProduct':
-        return cls(**data)
+
 
 @dataclass
 class LogEntry:
@@ -67,94 +57,96 @@ class LogEntry:
     roll_id: str
     details: Dict[str, Any]
     user: str = "system"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LogEntry':
-        return cls(**data)
 
+
+# --------------------------------------------------------------------
+# StorageManager using SQLite
+# --------------------------------------------------------------------
 class StorageManager:
     def __init__(self, data_dir: Union[str, Path]):
         self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path = self.data_dir / "storage.db"
         self._lock = threading.Lock()
-        
-        # Initialize data files
-        self.rolls_file = self.data_dir / "rolls.json"
-        self.master_file = self.data_dir / "master_products.json"
-        self.logs_file = self.data_dir / "logs.json"
-        
-        # Initialize empty data structures
-        self._rolls: Dict[str, Roll] = {}
-        self._master_products: Dict[str, MasterProduct] = {}
-        self._logs: List[LogEntry] = []
-        
-        # Load existing data
-        self._load_data()
-    
-    def _load_data(self):
-        """Load data from JSON files"""
-        with self._lock:
-            # Load rolls
-            if self.rolls_file.exists():
-                with open(self.rolls_file, 'r') as f:
-                    rolls_data = json.load(f)
-                    self._rolls = {rid: Roll.from_dict(data) for rid, data in rolls_data.items()}
-            
-            # Load master products
-            if self.master_file.exists():
-                with open(self.master_file, 'r') as f:
-                    master_data = json.load(f)
-                    self._master_products = {data['sku']: MasterProduct.from_dict(data) for data in master_data}
-            
-            # Load logs
-            if self.logs_file.exists():
-                with open(self.logs_file, 'r') as f:
-                    logs_data = json.load(f)
-                    self._logs = [LogEntry.from_dict(entry) for entry in logs_data]
-    
-    def _save_rolls(self):
-        """Save rolls to JSON file"""
-        with self._lock:
-            with open(self.rolls_file, 'w') as f:
-                json.dump(
-                    {rid: roll.to_dict() for rid, roll in self._rolls.items()},
-                    f,
-                    indent=2
-                )
-    
-    def _save_master_products(self):
-        """Save master products to JSON file"""
-        with self._lock:
-            with open(self.master_file, 'w') as f:
-                json.dump(
-                    [product.to_dict() for product in self._master_products.values()],
-                    f,
-                    indent=2
-                )
-    
-    def _save_logs(self):
-        """Save logs to JSON file"""
-        with self._lock:
-            with open(self.logs_file, 'w') as f:
-                json.dump(
-                    [log.to_dict() for log in self._logs],
-                    f,
-                    indent=2,
-                    default=str
-                )
-    
-    # Roll operations
+        self._init_db()
+
+    def _connect(self):
+        return sqlite3.connect(self.db_path)
+
+    def _init_db(self):
+        with self._connect() as conn:
+            cur = conn.cursor()
+
+            # Table: Rolls
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS rolls (
+                roll_id TEXT PRIMARY KEY,
+                sku TEXT,
+                lot TEXT,
+                current_length REAL,
+                original_length REAL,
+                location TEXT,
+                grade TEXT,
+                date_received TEXT,
+                marks_no TEXT,
+                status TEXT,
+                invoice_number TEXT,
+                po_number TEXT,
+                spl_name TEXT,
+                type_of_roll TEXT,
+                unit_type TEXT,
+                scrap_qty REAL,
+                specification TEXT,
+                colour TEXT,
+                packing_unit TEXT
+            )
+            """)
+
+            # Table: Master Products
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS master_products (
+                sku TEXT PRIMARY KEY,
+                description TEXT,
+                default_length REAL,
+                default_grade TEXT
+            )
+            """)
+
+            # Table: Logs
+            cur.execute("""
+            CREATE TABLE IF NOT EXISTS logs (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT,
+                action TEXT,
+                roll_id TEXT,
+                details TEXT,
+                user TEXT
+            )
+            """)
+            conn.commit()
+
+    # ----------------------------------------------------------------
+    # Roll Operations
+    # ----------------------------------------------------------------
     def add_roll(self, roll: Roll) -> bool:
-        """Add a new roll to storage"""
-        if roll.roll_id in self._rolls:
-            return False
-        
-        self._rolls[roll.roll_id] = roll
-        self._save_rolls()
-        
-        # Log the action
+        with self._connect() as conn:
+            cur = conn.cursor()
+            try:
+                cur.execute("""
+                INSERT INTO rolls VALUES (
+                    :roll_id, :sku, :lot, :current_length, :original_length,
+                    :location, :grade, :date_received, :marks_no, :status,
+                    :invoice_number, :po_number, :spl_name, :type_of_roll,
+                    :unit_type, :scrap_qty, :specification, :colour, :packing_unit
+                )
+                """, roll.to_dict())
+                conn.commit()
+            except sqlite3.IntegrityError:
+                return False
+
         self.add_log(
             action="roll_created",
             roll_id=roll.roll_id,
@@ -165,50 +157,41 @@ class StorageManager:
                 "location": roll.location
             }
         )
-        
         return True
-    
+
     def get_roll(self, roll_id: str) -> Optional[Roll]:
-        """Get a roll by ID"""
-        return self._rolls.get(roll_id)
-    
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM rolls WHERE roll_id = ?", (roll_id,))
+            row = cur.fetchone()
+        if not row:
+            return None
+        keys = [desc[0] for desc in cur.description]
+        return Roll(**dict(zip(keys, row)))
+
     def get_roll_by_id(self, roll_id: str) -> Optional[Roll]:
-        """Get a roll by ID (alias for get_roll)"""
         return self.get_roll(roll_id)
-    
+
     def update_roll(self, roll_id: str, **updates) -> bool:
-        """Update roll attributes"""
-        if roll_id not in self._rolls:
+        if not updates:
             return False
-        
-        roll = self._rolls[roll_id]
-        for key, value in updates.items():
-            if hasattr(roll, key):
-                setattr(roll, key, value)
-        
-        self._save_rolls()
+        fields = ", ".join([f"{k}=?" for k in updates.keys()])
+        values = list(updates.values()) + [roll_id]
+        with self._connect() as conn:
+            conn.execute(f"UPDATE rolls SET {fields} WHERE roll_id = ?", values)
+            conn.commit()
         return True
-    
+
     def cut_roll(self, roll_id: str, cut_length: float) -> bool:
-        """Cut a roll and update its length"""
-        if roll_id not in self._rolls:
+        roll = self.get_roll(roll_id)
+        if not roll or cut_length <= 0 or cut_length > roll.current_length:
             return False
-        
-        roll = self._rolls[roll_id]
-        
-        if cut_length <= 0 or cut_length > roll.current_length:
-            return False
-        
-        # Update roll length
+
         roll.current_length -= cut_length
-        
-        # If no length left, mark as used
         if roll.current_length <= 0:
             roll.status = "used"
-        
-        self._save_rolls()
-        
-        # Log the cut
+
+        self.update_roll(roll_id, current_length=roll.current_length, status=roll.status)
+
         self.add_log(
             action="roll_cut",
             roll_id=roll_id,
@@ -218,37 +201,48 @@ class StorageManager:
                 "new_status": roll.status
             }
         )
-        
         return True
-    
-    # Master product operations
+
+    # ----------------------------------------------------------------
+    # Master Product Operations
+    # ----------------------------------------------------------------
     def add_master_product(self, product: MasterProduct) -> bool:
-        """Add a new master product"""
-        if product.sku in self._master_products:
-            return False
-        
-        self._master_products[product.sku] = product
-        self._save_master_products()
-        
-        self.add_log(
-            action="master_product_added",
-            roll_id="",
-            details={"sku": product.sku, "description": product.description}
-        )
-        
+        with self._connect() as conn:
+            try:
+                conn.execute("""
+                INSERT INTO master_products VALUES (?, ?, ?, ?)
+                """, (product.sku, product.description, product.default_length, product.default_grade))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                return False
+
+        self.add_log("master_product_added", "", {"sku": product.sku, "description": product.description})
         return True
-    
+
     def get_master_product(self, sku: str) -> Optional[MasterProduct]:
-        """Get a master product by SKU"""
-        return self._master_products.get(sku)
-    
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM master_products WHERE sku = ?", (sku,))
+            row = cur.fetchone()
+        if not row:
+            return None
+        keys = [desc[0] for desc in cur.description]
+        return MasterProduct(**dict(zip(keys, row)))
+
     def get_all_master_products(self) -> List[MasterProduct]:
-        """Get all master products"""
-        return list(self._master_products.values())
-    
-    # Log operations
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM master_products")
+            rows = cur.fetchall()
+        keys = [desc[0] for desc in cur.description]
+        return [MasterProduct(**dict(zip(keys, row))) for row in rows]
+
+    def save_master_products(self):
+        # No-op since SQLite auto-saves
+        pass
+
+    # ----------------------------------------------------------------
+    # Logs
+    # ----------------------------------------------------------------
     def add_log(self, action: str, roll_id: str, details: Dict[str, Any], user: str = "system") -> str:
-        """Add a new log entry"""
         log_id = str(uuid.uuid4())
         log_entry = LogEntry(
             id=log_id,
@@ -258,105 +252,100 @@ class StorageManager:
             details=details,
             user=user
         )
-        
-        self._logs.append(log_entry)
-        self._save_logs()
-        
+        with self._connect() as conn:
+            conn.execute("""
+            INSERT INTO logs (id, timestamp, action, roll_id, details, user)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (log_entry.id, log_entry.timestamp, log_entry.action,
+                  log_entry.roll_id, json.dumps(log_entry.details), log_entry.user))
+            conn.commit()
         return log_id
-    
+
     def get_logs(self, limit: int = 100, **filters) -> List[LogEntry]:
-        """Get logs with optional filtering"""
-        logs = self._logs[-limit:]  # Get most recent logs first
-        
-        # Apply filters
+        query = "SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?"
+        params = [limit]
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            rows = cur.fetchall()
+            keys = [desc[0] for desc in cur.description]
+
+        logs = []
+        for row in rows:
+            data = dict(zip(keys, row))
+            data["details"] = json.loads(data["details"])
+            logs.append(LogEntry(**data))
+
+        # filter in Python (optional)
         if filters:
-            filtered_logs = []
-            for log in logs:
-                match = True
-                for key, value in filters.items():
-                    if hasattr(log, key) and getattr(log, key) != value:
-                        match = False
-                        break
-                    elif key in log.details and log.details[key] != value:
-                        match = False
-                        break
-                
-                if match:
-                    filtered_logs.append(log)
-            
-            return filtered_logs
-        
+            def match(log: LogEntry):
+                for k, v in filters.items():
+                    if getattr(log, k, None) != v and log.details.get(k) != v:
+                        return False
+                return True
+            logs = [log for log in logs if match(log)]
         return logs
-    
-    # Search operations
+
+    # ----------------------------------------------------------------
+    # Search Operations
+    # ----------------------------------------------------------------
     def search_rolls(self, **filters) -> List[Roll]:
-        """Search rolls with optional filters"""
-        results = []
-        
-        for roll in self._rolls.values():
-            match = True
-            for key, value in filters.items():
-                if hasattr(roll, key):
-                    attr_value = getattr(roll, key)
-                    if value.lower() not in str(attr_value).lower():
-                        match = False
-                        break
-            
-            if match:
-                results.append(roll)
-        
-        return results
-    
-    # Statistics operations
+        query = "SELECT * FROM rolls"
+        clauses, params = [], []
+        for k, v in filters.items():
+            clauses.append(f"{k} LIKE ?")
+            params.append(f"%{v}%")
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            rows = cur.fetchall()
+            keys = [desc[0] for desc in cur.description]
+        return [Roll(**dict(zip(keys, row))) for row in rows]
+
+    # ----------------------------------------------------------------
+    # Statistics Operations
+    # ----------------------------------------------------------------
     def get_roll_types_count(self, start_date: str = None, end_date: str = None) -> Dict[str, int]:
-        """Get count of rolls by type (based on type_of_roll field)"""
-        type_counts = {}
-        
-        for roll in self._rolls.values():
-            # Filter by date if provided
-            if start_date and end_date:
-                if roll.date_received < start_date or roll.date_received >= end_date:
-                    continue
-            
-            roll_type = roll.type_of_roll if roll.type_of_roll else "Standard"
-            type_counts[roll_type] = type_counts.get(roll_type, 0) + 1
-        
-        return type_counts if type_counts else {"Standard": len(self._rolls)}
-    
+        query = "SELECT COALESCE(type_of_roll, 'Standard') AS type, COUNT(*) FROM rolls"
+        params = []
+        if start_date and end_date:
+            query += " WHERE date_received >= ? AND date_received < ?"
+            params = [start_date, end_date]
+        query += " GROUP BY type"
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            data = dict(cur.fetchall())
+        return data or {"Standard": 0}
+
     def get_roll_statuses_count(self, start_date: str = None, end_date: str = None) -> Dict[str, int]:
-        """Get count of rolls by status"""
-        status_counts = {}
-        
-        for roll in self._rolls.values():
-            # Filter by date if provided
-            if start_date and end_date:
-                if roll.date_received < start_date or roll.date_received >= end_date:
-                    continue
-            
-            status = roll.status.capitalize()
-            status_counts[status] = status_counts.get(status, 0) + 1
-        
-        return status_counts
-    
+        query = "SELECT status, COUNT(*) FROM rolls"
+        params = []
+        if start_date and end_date:
+            query += " WHERE date_received >= ? AND date_received < ?"
+            params = [start_date, end_date]
+        query += " GROUP BY status"
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            data = {status.capitalize(): count for status, count in cur.fetchall()}
+        return data
+
     def get_rolls_by_date_range(self, start_date: str, end_date: str) -> List[tuple]:
-        """Get rolls within a date range for detailed table"""
-        results = []
-        
-        for roll in self._rolls.values():
-            if roll.date_received >= start_date and roll.date_received < end_date:
-                results.append((
-                    roll.date_received,
-                    roll.sku,
-                    roll.type_of_roll if roll.type_of_roll else "Standard",
-                    f"{roll.current_length:.2f}",
-                    roll.status.capitalize()
-                ))
-        
-        # Sort by date
-        results.sort(key=lambda x: x[0], reverse=True)
-        
-        return results
-    
-    def save_master_products(self):
-        """Public method to save master products"""
-        self._save_master_products()
+        query = """
+        SELECT date_received, sku,
+               COALESCE(type_of_roll, 'Standard'),
+               current_length, status
+        FROM rolls
+        WHERE date_received >= ? AND date_received < ?
+        ORDER BY date_received DESC
+        """
+        with self._connect() as conn:
+            cur = conn.execute(query, (start_date, end_date))
+            rows = cur.fetchall()
+        return [
+            (d, sku, t, f"{l:.2f}", s.capitalize())
+            for d, sku, t, l, s in rows
+        ]

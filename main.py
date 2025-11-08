@@ -35,7 +35,8 @@ class FabricRollApp(QApplication):
         
         try:
             # Initialize storage
-            self.storage = StorageManager(self.data_dir)
+            self.storage = StorageManager(os.path.join(os.getcwd(), "data"))
+
             logger.info("Storage initialized successfully")
             
             # Start API server
