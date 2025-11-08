@@ -13305,5 +13305,123 @@
       "location": ""
     },
     "user": "system"
+  },
+  {
+    "id": "25e47925-28ea-4517-b201-ec70bbad2294",
+    "timestamp": "2025-11-07T22:08:22.782936",
+    "action": "roll_created",
+    "roll_id": "DN006-001-001",
+    "details": {
+      "sku": "DN006",
+      "lot": "001",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "e06b7030-bd18-4348-854e-24177e53198c",
+    "timestamp": "2025-11-07T22:08:22.812803",
+    "action": "roll_received",
+    "roll_id": "DN006-001-001",
+    "details": {
+      "sku": "DN006",
+      "lot": "001",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "d197de0b-e8d2-41ef-935b-ebe3c67aa973",
+    "timestamp": "2025-11-07T22:09:11.475366",
+    "action": "roll_created",
+    "roll_id": "B8000/7001/250-DN004-001",
+    "details": {
+      "sku": "B8000/7001/250",
+      "lot": "DN004",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "b0fe18e1-2589-449d-981b-c1f6e1fd977f",
+    "timestamp": "2025-11-07T22:09:11.505294",
+    "action": "roll_received",
+    "roll_id": "B8000/7001/250-DN004-001",
+    "details": {
+      "sku": "B8000/7001/250",
+      "lot": "DN004",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "e2d557c0-9514-4b16-9b0a-62e03fcd7f1c",
+    "timestamp": "2025-11-07T22:09:52.967861",
+    "action": "dispatch",
+    "roll_id": "RM2061406001",
+    "details": {
+      "sku": "4644-0000",
+      "lot": "nan",
+      "dispatch_length": 25.0,
+      "remaining_length": 73.5,
+      "status": "active"
+    },
+    "user": "system"
+  },
+  {
+    "id": "864110ec-9ba1-49fe-a9d6-bc015343b436",
+    "timestamp": "2025-11-07T22:41:29.128418",
+    "action": "roll_created",
+    "roll_id": "DN006-005-001",
+    "details": {
+      "sku": "DN006",
+      "lot": "005",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "ef37cf2a-4f35-4066-8734-7d02ed00cf42",
+    "timestamp": "2025-11-07T22:41:29.156596",
+    "action": "roll_received",
+    "roll_id": "DN006-005-001",
+    "details": {
+      "sku": "DN006",
+      "lot": "005",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "172d3e5d-0239-482e-aede-2355fe315ee1",
+    "timestamp": "2025-11-08T11:36:02.531782",
+    "action": "roll_created",
+    "roll_id": "RM2061406020",
+    "details": {
+      "sku": "DN005",
+      "lot": "LOT0205",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
+  },
+  {
+    "id": "5f5f996e-881c-4f65-ace1-afa1bd2797af",
+    "timestamp": "2025-11-08T11:36:02.560736",
+    "action": "roll_received",
+    "roll_id": "RM2061406020",
+    "details": {
+      "sku": "DN005",
+      "lot": "LOT0205",
+      "length": 100.0,
+      "location": ""
+    },
+    "user": "system"
   }
 ]

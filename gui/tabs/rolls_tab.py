@@ -158,6 +158,151 @@ class RollsTab(QWidget):
         # Apply any active filters
         self.apply_filters()
     
+    def add_new_roll(self, roll_data):
+        """Add a new roll from Receive Tab and create QR Code and Label"""
+        try:
+            from storage import Roll
+            
+            # Create a new roll object
+            roll = Roll(
+                roll_id=roll_data['roll_id'],
+                sku=roll_data['sku'],
+                lot=roll_data['lot'],
+                current_length=float(roll_data['length']),
+                original_length=float(roll_data['length']),
+                location=roll_data.get('location', ''),
+                grade=roll_data.get('grade', 'A'),
+                date_received=roll_data.get('date_received', datetime.now().strftime("%Y-%m-%d")),
+                status='active'
+            )
+            
+            # Add to storage
+            if self.storage.add_roll(roll):
+                # Add log entry
+                self.storage.add_log(
+                    action="roll_received",
+                    roll_id=roll.roll_id,
+                    details={
+                        'sku': roll.sku,
+                        'lot': roll.lot,
+                        'length': roll.original_length,
+                        'location': roll.location
+                    }
+                )
+                
+                # Reload data to show new roll
+                self.load_data()
+                
+                # Ask if user wants to create QR Code and Label
+                reply = QMessageBox.question(
+                    self,
+                    "สร้าง QR Code และฉลาก / Create QR Code and Label",
+                    f"ต้องการสร้าง QR Code และฉลากสำหรับม้วน {roll.roll_id} หรือไม่?\n\n"
+                    f"Do you want to create QR Code and label for roll {roll.roll_id}?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                
+                if reply == QMessageBox.Yes:
+                    self.create_qr_and_label(roll)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "ข้อผิดพลาด / Error",
+                    f"ไม่สามารถเพิ่มม้วน {roll_data['roll_id']} ได้\n\n"
+                    f"Failed to add roll {roll_data['roll_id']}.\n"
+                    f"A roll with this ID may already exist."
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "ข้อผิดพลาด / Error",
+                f"เกิดข้อผิดพลาดในการเพิ่มม้วน:\n\nError adding roll:\n{str(e)}"
+            )
+    
+    def create_qr_and_label(self, roll):
+        """Create QR Code and Label for the roll"""
+        try:
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(roll.roll_id)
+            qr.make(fit=True)
+            
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Ask what to do with the QR code and label
+            reply = QMessageBox.question(
+                self,
+                "บันทึกหรือพิมพ์ / Save or Print",
+                f"ต้องการพิมพ์ฉลากหรือบันทึกเป็นไฟล์?\n\n"
+                f"Do you want to print the label or save it as a file?",
+                QMessageBox.StandardButton(0x00000400) |  # Yes (Print)
+                QMessageBox.StandardButton(0x00000001) |  # Save
+                QMessageBox.Cancel,
+                QMessageBox.StandardButton(0x00000400)
+            )
+            
+            if reply == QMessageBox.StandardButton(0x00000400):  # Print
+                self.print_label_for_roll(roll, qr_img)
+            elif reply == QMessageBox.StandardButton(0x00000001):  # Save
+                self.save_qr_code(qr_img, roll.roll_id)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "ข้อผิดพลาด / Error",
+                f"เกิดข้อผิดพลาดในการสร้าง QR Code:\n\nError creating QR Code:\n{str(e)}"
+            )
+    
+    def print_label_for_roll(self, roll, qr_img):
+        """Print label for the roll"""
+        try:
+            QMessageBox.information(
+                self,
+                "พิมพ์ / Print",
+                f"ฉลากสำหรับม้วน {roll.roll_id} พร้อมที่จะพิมพ์\n\n"
+                f"Label for roll {roll.roll_id} is ready to print.\n"
+                f"(ฟีเจอร์นี้จะเพิ่มเติมในภายหลัง)"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "ข้อผิดพลาด / Error",
+                f"เกิดข้อผิดพลาดในการพิมพ์:\n\nError printing:\n{str(e)}"
+            )
+    
+    def save_qr_code(self, qr_image, roll_id):
+        """Save QR code to file"""
+        try:
+            filename, _ = QFileDialog.getSaveFileName(
+                self,
+                "บันทึก QR Code / Save QR Code",
+                f"QR_{roll_id}.png",
+                "PNG Files (*.png);;All Files (*)"
+            )
+            
+            if filename:
+                if not filename.lower().endswith('.png'):
+                    filename += '.png'
+                
+                qr_image.save(filename)
+                QMessageBox.information(
+                    self,
+                    "สำเร็จ / Success",
+                    f"บันทึก QR Code เป็น {filename} สำเร็จ!\n\n"
+                    f"QR Code saved as {filename}"
+                )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "ข้อผิดพลาด / Error",
+                f"เกิดข้อผิดพลาดในการบันทึก:\n\nError saving:\n{str(e)}"
+            )
+    
     def update_filters(self):
         """Update filter dropdowns with unique values"""
         # Store current selections

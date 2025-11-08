@@ -52,8 +52,8 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.dashboard_tab, "Dashboard")
         self.tab_widget.addTab(self.master_tab, "Master Data")
         self.tab_widget.addTab(self.receive_tab, "รับเข้า / Receive")
-        self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
         self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
+        self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
         self.tab_widget.addTab(self.logs_tab, "Logs")
         self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
         

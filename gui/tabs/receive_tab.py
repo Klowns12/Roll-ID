@@ -359,7 +359,7 @@ class ReceiveTab(QWidget):
         self.mobile_server = None
         self.label_generator = LabelGenerator()
         self.setup_ui()
-        self.load_master_data()
+        # self.load_master_data()  # Commented out because master_tab is not created
         
         # Connect signals
         self.roll_received.connect(self.on_roll_received)
@@ -457,13 +457,15 @@ class ReceiveTab(QWidget):
         
         # Create tabs
         self.manual_tab = self.create_manual_tab()
-        self.master_tab = self.create_master_tab()
-        self.import_tab = self.create_import_tab()
+        # self.master_tab = self.create_master_tab()
+        self.Device_tab = self.create_device_tab()
+        self.mobile_tab = self.create_mobile_tab()
         
         # Add tabs
         self.tabs.addTab(self.manual_tab, "Manual Entry")
-        self.tabs.addTab(self.master_tab, "From Master")
-        self.tabs.addTab(self.import_tab, "Import from File")
+        # self.tabs.addTab(self.master_tab, "From Master")
+        self.tabs.addTab(self.Device_tab, "Scan Device")
+        self.tabs.addTab(self.mobile_tab, "Scan Mobile Device")
         
         # Add tabs to layout
         layout.addWidget(self.tabs)
@@ -476,10 +478,16 @@ class ReceiveTab(QWidget):
         # Form group
         form_group = QGroupBox("Roll Information")
         form_layout = QFormLayout()
+
+        # Roll ID
+        self.manual_roll_id = QLineEdit()
+        self.manual_roll_id.setPlaceholderText("e.g., ROLL-1234")
+        form_layout.addRow("Roll ID*:", self.manual_roll_id)        
         
         # SKU
         self.manual_sku = QLineEdit()
         self.manual_sku.setPlaceholderText("e.g., FAB-001")
+        form_layout.addRow("SKU*:", self.manual_sku)
         
         # Lot
         self.manual_lot = QLineEdit()
@@ -507,6 +515,22 @@ class ReceiveTab(QWidget):
         self.manual_location = QLineEdit()
         self.manual_location.setPlaceholderText("e.g., Warehouse A, Rack 1")
         
+        # Specifications
+        self.manual_specifications = QLineEdit()
+        self.manual_specifications.setPlaceholderText("e.g., 100% Cotton")
+        
+        # Product
+        self.manual_product = QLineEdit()
+        self.manual_product.setPlaceholderText("e.g., Product Name")
+        
+        # Colour
+        self.manual_colour = QLineEdit()
+        self.manual_colour.setPlaceholderText("e.g., Red, Blue, etc.")
+        
+        # Package Unit
+        self.manual_package_unit = QLineEdit()
+        self.manual_package_unit.setPlaceholderText("e.g., Roll, Meter, etc.")
+        
         # Date received
         self.manual_date = QDateEdit()
         self.manual_date.setCalendarPopup(True)
@@ -516,19 +540,16 @@ class ReceiveTab(QWidget):
         self.manual_notes = QLineEdit()
         self.manual_notes.setPlaceholderText("Optional notes...")
         
-        # Add mobile connection button
-        self.mobile_connect_btn = QPushButton("Connect Mobile Device")
-        self.mobile_connect_btn.setIcon(self.style().standardIcon(getattr(QStyle.StandardPixmap, 'SP_ComputerIcon')))
-        self.mobile_connect_btn.clicked.connect(self.show_mobile_connection_dialog)
-        
         # Add fields to form
-        form_layout.addRow("SKU*:", self.manual_sku)
         form_layout.addRow("Lot*:", self.manual_lot)
         form_layout.addRow("Length*:", self.manual_length)
-        form_layout.addRow("", self.mobile_connect_btn)
         form_layout.addRow("Width:", self.manual_width)
         form_layout.addRow("Grade:", self.manual_grade)
         form_layout.addRow("Location:", self.manual_location)
+        form_layout.addRow("Specifications:", self.manual_specifications)
+        form_layout.addRow("Product:", self.manual_product)
+        form_layout.addRow("Colour:", self.manual_colour)
+        form_layout.addRow("Package Unit:", self.manual_package_unit)
         form_layout.addRow("Date Received:", self.manual_date)
         form_layout.addRow("Notes:", self.manual_notes)
         
@@ -554,110 +575,128 @@ class ReceiveTab(QWidget):
         
         return tab
     
-    def create_master_tab(self):
-        """Create the 'From Master' tab"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+    # def create_master_tab(self):
+    #     """Create the 'From Master' tab"""
+    #     tab = QWidget()
+    #     layout = QVBoxLayout(tab)
         
-        # Master product selection
-        master_group = QGroupBox("Select Master Product")
-        master_layout = QVBoxLayout()
+    #     # Master product selection
+    #     master_group = QGroupBox("Select Master Product")
+    #     master_layout = QVBoxLayout()
         
-        # Product filter
-        filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("Filter:"))
+    #     # Product filter
+    #     filter_layout = QHBoxLayout()
+    #     filter_layout.addWidget(QLabel("Filter:"))
         
-        self.master_filter = QLineEdit()
-        self.master_filter.setPlaceholderText("Filter by SKU or description...")
-        self.master_filter.textChanged.connect(self.filter_master_products)
+    #     self.master_filter = QLineEdit()
+    #     self.master_filter.setPlaceholderText("Filter by SKU or description...")
+    #     self.master_filter.textChanged.connect(self.filter_master_products)
         
-        filter_layout.addWidget(self.master_filter)
-        master_layout.addLayout(filter_layout)
+    #     filter_layout.addWidget(self.master_filter)
+    #     master_layout.addLayout(filter_layout)
         
-        # Master products table
-        self.master_table = QTableWidget()
-        self.master_table.setColumnCount(4)
-        self.master_table.setHorizontalHeaderLabels(["", "SKU", "Description", "Default Length"])
-        self.master_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.master_table.verticalHeader().setVisible(False)
-        self.master_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.master_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self.master_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    #     # Master products table
+    #     self.master_table = QTableWidget()
+    #     self.master_table.setColumnCount(4)
+    #     self.master_table.setHorizontalHeaderLabels(["", "SKU", "Description", "Default Length"])
+    #     self.master_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+    #     self.master_table.verticalHeader().setVisible(False)
+    #     self.master_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+    #     self.master_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+    #     self.master_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         
-        master_layout.addWidget(self.master_table)
-        master_group.setLayout(master_layout)
+    #     master_layout.addWidget(self.master_table)
+    #     master_group.setLayout(master_layout)
         
-        # Form for roll details
-        form_group = QGroupBox("Roll Details")
-        form_layout = QFormLayout()
+    #     # Form for roll details
+    #     form_group = QGroupBox("Roll Details")
+    #     form_layout = QFormLayout()
         
-        # Lot
-        self.master_lot = QLineEdit()
-        self.master_lot.setPlaceholderText("e.g., LOT2023-001")
+    #     # Lot
+    #     self.master_lot = QLineEdit()
+    #     self.master_lot.setPlaceholderText("e.g., LOT2023-001")
         
-        # Length (can override default)
-        self.master_length = QDoubleSpinBox()
-        self.master_length.setRange(0.01, 10000.0)
-        self.master_length.setValue(100.0)
-        self.master_length.setSuffix(" m")
-        self.master_length.setDecimals(2)
+    #     # Length (can override default)
+    #     self.master_length = QDoubleSpinBox()
+    #     self.master_length.setRange(0.01, 10000.0)
+    #     self.master_length.setValue(100.0)
+    #     self.master_length.setSuffix(" m")
+    #     self.master_length.setDecimals(2)
         
-        # Use default length checkbox
-        self.use_default_length = QCheckBox("Use default length")
-        self.use_default_length.setChecked(True)
-        self.use_default_length.toggled.connect(self.toggle_use_default_length)
+    #     # Use default length checkbox
+    #     self.use_default_length = QCheckBox("Use default length")
+    #     self.use_default_length.setChecked(True)
+    #     self.use_default_length.toggled.connect(self.toggle_use_default_length)
         
-        # Location
-        self.master_location = QLineEdit()
-        self.master_location.setPlaceholderText("e.g., Warehouse A, Rack 1")
+    #     # Location
+    #     self.master_location = QLineEdit()
+    #     self.master_location.setPlaceholderText("e.g., Warehouse A, Rack 1")
         
-        # Date received
-        self.master_date = QDateEdit()
-        self.master_date.setCalendarPopup(True)
-        self.master_date.setDate(QDate.currentDate())
+    #     # Date received
+    #     self.master_date = QDateEdit()
+    #     self.master_date.setCalendarPopup(True)
+    #     self.master_date.setDate(QDate.currentDate())
         
-        # Notes
-        self.master_notes = QLineEdit()
-        self.master_notes.setPlaceholderText("Optional notes...")
+    #     # Notes
+    #     self.master_notes = QLineEdit()
+    #     self.master_notes.setPlaceholderText("Optional notes...")
         
-        # Add fields to form
-        form_layout.addRow("Lot*:", self.master_lot)
-        form_layout.addRow("Length*:", self.master_length)
-        form_layout.addRow("", self.use_default_length)
-        form_layout.addRow("Location:", self.master_location)
-        form_layout.addRow("Date Received:", self.master_date)
-        form_layout.addRow("Notes:", self.master_notes)
+    #     # Add fields to form
+    #     form_layout.addRow("Lot*:", self.master_lot)
+    #     form_layout.addRow("Length*:", self.master_length)
+    #     form_layout.addRow("", self.use_default_length)
+    #     form_layout.addRow("Location:", self.master_location)
+    #     form_layout.addRow("Date Received:", self.master_date)
+    #     form_layout.addRow("Notes:", self.master_notes)
         
-        form_group.setLayout(form_layout)
+    #     form_group.setLayout(form_layout)
         
-        # Buttons
-        btn_layout = QHBoxLayout()
+    #     # Buttons
+    #     btn_layout = QHBoxLayout()
         
-        self.master_clear_btn = QPushButton("Clear")
-        self.master_clear_btn.clicked.connect(self.clear_master_form)
+    #     self.master_clear_btn = QPushButton("Clear")
+    #     self.master_clear_btn.clicked.connect(self.clear_master_form)
         
-        self.master_submit_btn = QPushButton("Save Roll")
-        self.master_submit_btn.clicked.connect(self.submit_master_form)
+    #     self.master_submit_btn = QPushButton("Save Roll")
+    #     self.master_submit_btn.clicked.connect(self.submit_master_form)
         
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.master_clear_btn)
-        btn_layout.addWidget(self.master_submit_btn)
+    #     btn_layout.addStretch()
+    #     btn_layout.addWidget(self.master_clear_btn)
+    #     btn_layout.addWidget(self.master_submit_btn)
         
-        # Add to layout
-        layout.addWidget(master_group, 2)
-        layout.addWidget(form_group, 1)
-        layout.addLayout(btn_layout)
+    #     # Add to layout
+    #     layout.addWidget(master_group, 2)
+    #     layout.addWidget(form_group, 1)
+    #     layout.addLayout(btn_layout)
         
-        return tab
+    #     return tab
     
-    def create_import_tab(self):
-        """Create the import from file tab"""
+    def create_device_tab(self):
+        """Create the device tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        
+        # Connection status group
+        status_group = QGroupBox("สถานะการเชื่อมต่อ / Connection Status")
+        status_layout = QHBoxLayout()
+        
+        # Status indicator
+        self.device_status_label = QLabel("● ไม่เชื่อมต่อ / Disconnected")
+        self.device_status_label.setStyleSheet("color: red; font-weight: bold;")
+        
+        # Check connection button
+        check_btn = QPushButton("ตรวจสอบการเชื่อมต่อ / Check Connection")
+        check_btn.clicked.connect(self.check_device_connection)
+        
+        status_layout.addWidget(self.device_status_label)
+        status_layout.addStretch()
+        status_layout.addWidget(check_btn)
+        status_group.setLayout(status_layout)
         
         # Import instructions
         instructions = QLabel(
-            "Import rolls from a CSV or Excel file. The file should contain the following columns:\n"
+            "สแกนเครื่องสแกนเพื่อรับม้วน / Scan device to receive roll. Please use the external scanner to scan the file.\n"
+            "ไฟล์ควรมีคอลัมน์ต่อไปนี้ / The file should contain the following columns:\n"
             "- sku (required): Product SKU\n"
             "- lot (required): Lot number\n"
             "- length (required): Roll length in meters\n"
@@ -670,8 +709,8 @@ class ReceiveTab(QWidget):
         instructions.setWordWrap(True)
         
         # Import button
-        self.import_btn = QPushButton("Select File to Import...")
-        self.import_btn.clicked.connect(self.import_from_file)
+        self.import_btn = QPushButton("สแกนเครื่องสแกน / Scan Device...")
+        self.import_btn.clicked.connect(self.scan_device)
         
         # Preview table
         self.import_table = QTableWidget()
@@ -684,11 +723,104 @@ class ReceiveTab(QWidget):
         self.import_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         
         # Add to layout
+        layout.addWidget(status_group)
         layout.addWidget(instructions)
         layout.addWidget(self.import_btn)
         layout.addWidget(self.import_table)
         
         return tab
+    
+    def create_mobile_tab(self):
+        """Create the mobile device scanning tab"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Instructions
+        instructions = QLabel(
+            "Scan rolls using a mobile device connected to the same network.\n\n"
+            "1. Click 'Connect Mobile Device' to get the connection QR code\n"
+            "2. Scan the QR code with your mobile device\n"
+            "3. Use the mobile interface to scan roll QR codes\n"
+            "4. Scanned data will appear below"
+        )
+        instructions.setWordWrap(True)
+        
+        # Connect button
+        connect_btn = QPushButton("Connect Mobile Device")
+        connect_btn.clicked.connect(self.show_mobile_connection_dialog)
+        
+        # Status label
+        status_label = QLabel("Status: Waiting for scans...")
+        
+        # Results table
+        results_table = QTableWidget()
+        results_table.setColumnCount(6)
+        results_table.setHorizontalHeaderLabels([
+            "Roll ID", "SKU", "Lot", "Length", "Status", "Time"
+        ])
+        results_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        results_table.verticalHeader().setVisible(False)
+        
+        layout.addWidget(instructions)
+        layout.addWidget(connect_btn)
+        layout.addWidget(status_label)
+        layout.addWidget(results_table)
+        
+        return tab
+    
+    def check_device_connection(self):
+        """ตรวจสอบสถานะการเชื่อมต่อเครื่องสแกน / Check scanner device connection status"""
+        try:
+            # ลองเชื่อมต่อไปยังเครื่องสแกน (ตัวอย่าง: COM port หรือ USB)
+            # สามารถปรับแต่งตามความต้องการของเครื่องสแกนจริง
+            
+            # ตรวจสอบพอร์ต COM ที่ใช้บ่อย
+            import serial.tools.list_ports
+            
+            ports = list(serial.tools.list_ports.comports())
+            
+            if ports:
+                # พบเครื่องสแกน
+                port_info = ports[0]
+                self.device_status_label.setText(f"● เชื่อมต่อแล้ว / Connected: {port_info.device}")
+                self.device_status_label.setStyleSheet("color: green; font-weight: bold;")
+                self.import_btn.setEnabled(True)
+                
+                QMessageBox.information(
+                    self,
+                    "สำเร็จ / Success",
+                    f"เชื่อมต่อเครื่องสแกนสำเร็จ\n\nConnected to scanner:\n{port_info.device}\n{port_info.description}"
+                )
+            else:
+                # ไม่พบเครื่องสแกน
+                self.device_status_label.setText("● ไม่เชื่อมต่อ / Disconnected")
+                self.device_status_label.setStyleSheet("color: red; font-weight: bold;")
+                self.import_btn.setEnabled(False)
+                
+                QMessageBox.warning(
+                    self,
+                    "ข้อผิดพลาด / Error",
+                    "ไม่พบเครื่องสแกน\n\nNo scanner device found.\nPlease connect your scanner device."
+                )
+        except ImportError:
+            # ถ้าไม่มี pyserial ให้แสดงข้อความ
+            QMessageBox.warning(
+                self,
+                "ข้อผิดพลาด / Error",
+                "ไม่สามารถตรวจสอบเครื่องสแกนได้\n\nCannot check scanner connection.\nPlease install pyserial: pip install pyserial"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "ข้อผิดพลาด / Error",
+                f"เกิดข้อผิดพลาดในการตรวจสอบ:\n\nError checking connection:\n{str(e)}"
+            )
+    
+    def scan_device(self):
+        """Scan device to receive roll"""
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Device File", "", "CSV Files (*.csv)")
+        if file_path:
+            self.import_from_file(file_path)
     
     def load_master_data(self):
         """Load master products into the table"""
@@ -742,17 +874,23 @@ class ReceiveTab(QWidget):
     
     def clear_manual_form(self):
         """Clear the manual entry form"""
+        self.manual_roll_id.clear()
         self.manual_sku.clear()
         self.manual_lot.clear()
         self.manual_length.setValue(100.0)
         self.manual_width.setValue(1.5)
         self.manual_grade.setCurrentIndex(0)
         self.manual_location.clear()
+        self.manual_specifications.clear()
+        self.manual_product.clear()
+        self.manual_colour.clear()
+        self.manual_package_unit.clear()
         self.manual_date.setDate(QDate.currentDate())
         self.manual_notes.clear()
     
     def clear_master_form(self):
         """Clear the master entry form"""
+        self.master_roll_id.clear()
         self.master_lot.clear()
         self.master_length.setValue(100.0)
         self.use_default_length.setChecked(True)
@@ -766,6 +904,12 @@ class ReceiveTab(QWidget):
     
     def submit_manual_form(self):
         """Submit the manual entry form"""
+
+        if not self.manual_roll_id.text().strip():
+            QMessageBox.warning(self, "Validation Error", "Roll ID is required!")
+            self.manual_roll_id.setFocus()
+            return
+        
         # Validate required fields
         if not self.manual_sku.text().strip():
             QMessageBox.warning(self, "Validation Error", "SKU is required!")
@@ -777,10 +921,10 @@ class ReceiveTab(QWidget):
             self.manual_lot.setFocus()
             return
         
-        # Generate roll ID (format: SKU-LOT-001)
+        # Get roll ID from input
+        roll_id = self.manual_roll_id.text().strip().upper()
         sku = self.manual_sku.text().strip().upper()
         lot = self.manual_lot.text().strip().upper()
-        roll_id = f"{sku}-{lot}-001"  # Simple implementation - in a real app, you'd check for existing IDs
         
         # Create roll data
         roll_data = {
@@ -792,6 +936,10 @@ class ReceiveTab(QWidget):
             'width': self.manual_width.value(),
             'grade': self.manual_grade.currentText(),
             'location': self.manual_location.text().strip(),
+            'specifications': self.manual_specifications.text().strip(),
+            'product': self.manual_product.text().strip(),
+            'colour': self.manual_colour.text().strip(),
+            'package_unit': self.manual_package_unit.text().strip(),
             'date_received': self.manual_date.date().toString("yyyy-MM-dd"),
             'notes': self.manual_notes.text().strip()
         }
@@ -801,6 +949,12 @@ class ReceiveTab(QWidget):
     
     def submit_master_form(self):
         """Submit the master entry form"""
+
+        if not self.master_roll_id.text().strip():
+            QMessageBox.warning(self, "Validation Error", "Roll ID is required!")
+            self.master_roll_id.setFocus()
+            return
+        
         # Check if a product is selected
         selected_row = -1
         for row in range(self.master_table.rowCount()):
@@ -826,9 +980,9 @@ class ReceiveTab(QWidget):
             QMessageBox.warning(self, "Error", "Selected product not found!")
             return
         
-        # Generate roll ID (format: SKU-LOT-001)
+        # Get roll ID from input
+        roll_id = self.master_roll_id.text().strip().upper()
         lot = self.master_lot.text().strip().upper()
-        roll_id = f"{sku}-{lot}-001"  # Simple implementation - in a real app, you'd check for existing IDs
         
         # Create roll data
         length = product.default_length if self.use_default_length.isChecked() else self.master_length.value()
@@ -986,70 +1140,40 @@ class ReceiveTab(QWidget):
         self.import_table.setRowCount(0)
     
     def on_roll_received(self, roll_data):
-        """Handle a new roll being received"""
+        """Handle a new roll being received - send data to Rolls Tab for processing"""
         try:
-            # Create a new roll
-            roll = Roll(
-                roll_id=roll_data['roll_id'],
-                sku=roll_data['sku'],
-                lot=roll_data['lot'],
-                current_length=float(roll_data['length']),
-                original_length=float(roll_data['length']),
-                location=roll_data.get('location', ''),
-                grade=roll_data.get('grade', 'A'),
-                date_received=roll_data.get('date_received', datetime.now().strftime("%Y-%m-%d")),
-                status='active'
+            # Show success message
+            QMessageBox.information(
+                self,
+                "สำเร็จ / Success",
+                f"ข้อมูลม้วน {roll_data['roll_id']} ได้รับเข้าแล้ว!\n\n"
+                f"Data received for roll {roll_data['roll_id']}!\n\n"
+                f"ไปที่แท็บ 'จัดการม้วน / Rolls' เพื่อสร้าง QR Code และฉลาก\n"
+                f"Go to 'Rolls' tab to create QR Code and label"
             )
             
-            # Add to storage
-            if self.storage.add_roll(roll):
-                # Add log entry
-                self.storage.add_log(
-                    action="roll_received",
-                    roll_id=roll.roll_id,
-                    details={
-                        'sku': roll.sku,
-                        'lot': roll.lot,
-                        'length': roll.original_length,
-                        'location': roll.location
-                    }
-                )
-                
-                # Show success message with option to print label
-                reply = QMessageBox.question(
-                    self,
-                    "สำเร็จ / Success",
-                    f"เพิ่มม้วน {roll.roll_id} สำเร็จแล้ว!\n\nต้องการพิมพ์ฉลากเลยหรือไม่?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes
-                )
-                
-                if reply == QMessageBox.Yes:
-                    self.print_label(roll)
-                
-                # Clear the form
-                if self.tabs.currentWidget() == self.manual_tab:
-                    self.clear_manual_form()
-                else:
-                    self.clear_master_form()
-                
-                # Switch to the rolls tab in the main window
-                main_window = self.window()
-                if hasattr(main_window, 'tab_widget'):
-                    main_window.tab_widget.setCurrentIndex(4)  # Updated index for rolls tab
-                
+            # Clear the form
+            if self.tabs.currentWidget() == self.manual_tab:
+                self.clear_manual_form()
             else:
-                QMessageBox.warning(
-                    self,
-                    "Error",
-                    f"Failed to add roll. A roll with ID {roll_data['roll_id']} may already exist."
-                )
+                self.clear_master_form()
+            
+            # Get main window and emit signal to Rolls Tab
+            main_window = self.window()
+            if hasattr(main_window, 'rolls_tab'):
+                # Send roll data to Rolls Tab for processing
+                if hasattr(main_window.rolls_tab, 'add_new_roll'):
+                    main_window.rolls_tab.add_new_roll(roll_data)
+            
+            # Switch to the rolls tab in the main window
+            if hasattr(main_window, 'tab_widget'):
+                main_window.tab_widget.setCurrentIndex(4)  # Updated index for rolls tab
                 
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Error",
-                f"An error occurred while adding the roll:\n{str(e)}"
+                "ข้อผิดพลาด / Error",
+                f"An error occurred while processing the roll:\n{str(e)}"
             )
     
     def show_mobile_connection_dialog(self):
