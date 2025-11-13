@@ -5,9 +5,12 @@ import logging
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QIcon
 from gui.main_window import MainWindow
+from gui.dialogs.login_dialog import LoginDialog
 from storage import StorageManager
 from api_server import APIServer
+from auth import AuthManager
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +29,15 @@ class FabricRollApp(QApplication):
         self.setApplicationName("Fabric Roll Management System")
         self.setStyle('Fusion')
         
+        # Set application icon
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), "fabric.png")
+            if os.path.exists(icon_path):
+                # Note: setApplicationIcon is not available in PySide6, icon will be set on main window
+                logger.info(f"Application icon path: {icon_path}")
+        except Exception as e:
+            logger.warning(f"Failed to load application icon: {e}")
+        
         # Set up cleanup on exit
         self.aboutToQuit.connect(self.cleanup)
         
@@ -34,17 +46,21 @@ class FabricRollApp(QApplication):
         self.data_dir.mkdir(exist_ok=True)
         
         try:
+            # Initialize authentication manager
+            self.auth_manager = AuthManager(os.path.join(os.getcwd(), "data"))
+            logger.info("Authentication manager initialized successfully")
+            
             # Initialize storage
             self.storage = StorageManager(os.path.join(os.getcwd(), "data"))
-
             logger.info("Storage initialized successfully")
             
             # Start API server
             self.start_api_server()
             
-            # Create and show main window
-            self.main_window = MainWindow(self.storage)
-            self.main_window.show()
+            # Skip login and go directly to main window (for testing)
+            self.main_window = None
+            self.show_login()
+            # self.skip_login_for_testing()
             
         except Exception as e:
             logger.critical(f"Failed to initialize application: {e}", exc_info=True)
@@ -54,6 +70,59 @@ class FabricRollApp(QApplication):
                 f"Failed to initialize application:\n{str(e)}\n\n"
                 "Please check the logs for more details."
             )
+            self.quit()
+    
+    def skip_login_for_testing(self):
+        """Skip login and go directly to main window (for testing)"""
+        try:
+            # Get or create admin user for testing
+            admin_user = self.auth_manager.get_user("admin")
+            if not admin_user:
+                # Create admin user if it doesn't exist
+                self.auth_manager.add_user("admin", "admin", "Admin User", is_admin=True)
+                admin_user = self.auth_manager.get_user("admin")
+            
+            logger.info(f"User {admin_user.username} logged in (testing mode - login skipped)")
+            
+            # Create and show main window with authenticated user
+            if self.main_window:
+                self.main_window.close()
+            
+            self.main_window = MainWindow(
+                self.storage, 
+                self.auth_manager, 
+                admin_user
+            )
+            self.main_window.show()
+            
+        except Exception as e:
+            logger.error(f"Error in skip_login_for_testing: {e}")
+            self.quit()
+    
+    def show_login(self):
+        """Show login dialog"""
+        login_dialog = LoginDialog(self.auth_manager)
+        
+        if login_dialog.exec() == LoginDialog.DialogCode.Accepted:
+            authenticated_user = login_dialog.get_authenticated_user()
+            if authenticated_user:
+                logger.info(f"User {authenticated_user.username} logged in successfully")
+                
+                # Create and show main window with authenticated user
+                if self.main_window:
+                    self.main_window.close()
+                
+                self.main_window = MainWindow(
+                    self.storage, 
+                    self.auth_manager, 
+                    authenticated_user
+                )
+                self.main_window.show()
+            else:
+                self.quit()
+        else:
+            # User cancelled login
+            logger.info("Login cancelled by user")
             self.quit()
     
     def start_api_server(self):

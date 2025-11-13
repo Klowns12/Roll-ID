@@ -37,22 +37,23 @@ class LabelGenerator:
             PIL.Image: รูปฉลากขนาดเล็ก
         """
         
-        roll_data_mock = {
-            'roll_id': 'R1',
-            'sku': 'F1',
-            'product_name': 'Product Test1',
-            'lot': 'LOT1234',
-            'date_received': '2025-11-09',
-            'specification': '100% Cotton Test Specification',
-            'colour': 'Blue',
-            'packing_unit': 'Meter',
-            'unit_type': 'MTS',
-            'grade': 'A',
-            'type_of_roll': '',
-            'marks_no': '',
-            'current_length': 100.0
+        # ใช้ข้อมูลจริง หรือค่า default ถ้าไม่มี
+        data = {
+            'roll_id': roll_data.get('roll_id', 'N/A'),
+            'sku': roll_data.get('sku', roll_data.get('pdt_code', '')),
+            'product_name': roll_data.get('product_name', roll_data.get('pdt_name', '')),
+            'lot': roll_data.get('lot', ''),
+            'date_received': roll_data.get('date_received', datetime.now().strftime('%Y-%m-%d')),
+            'specification': roll_data.get('specification', roll_data.get('pdt_code', '')),
+            'colour': roll_data.get('colour', ''),
+            'packing_unit': roll_data.get('packing_unit', roll_data.get('package_unit', '')),
+            'unit_type': roll_data.get('unit_type', 'MTS'),
+            'grade': roll_data.get('grade', 'A'),
+            'type_of_roll': roll_data.get('type_of_roll', ''),
+            'marks_no': roll_data.get('marks_no', ''),
+            'current_length': roll_data.get('current_length', roll_data.get('length', 0)),
+            'width': roll_data.get('width', '')
         }
-
 
 
         # ขนาดพิกเซล 300 DPI
@@ -66,18 +67,8 @@ class LabelGenerator:
         draw.rectangle([5, 5, width - 5, height - 5], outline=self.color_border, width=2)
         
 
-        # กำหนดลำดับของคีย์ที่ต้องการ
-        keys_order = [
-            'roll_id', 'sku', 'lot', 'date_received', 'specification',
-            'colour', 'packing_unit', 'unit_type', 'grade', 'type_of_roll',
-            'marks_no', 'current_length'
-        ]
-
-        # สร้าง format string
-        formatted = '%'.join(str(roll_data_mock.get(k)) if roll_data_mock.get(k) not in (None, '') else '-' for k in keys_order)
-
-
-        qr_string = formatted
+        # QR Code ต้องเก็บ SKU (Code) ไม่ใช่ Roll ID เพื่อให้ Dispatch tab ค้นหาได้
+        qr_string = data['sku']
 
  
 
@@ -100,38 +91,50 @@ class LabelGenerator:
             font_small = ImageFont.load_default()
 
         t_x = 50 
-        t_y = 200
-        t_gap = 60
+        t_y = 180
+        t_gap = 50  # Reduced gap to fit before QR
+        max_width = 400  # Max width before QR code
+
+        def truncate_text(text, max_chars=25):
+            """ตัดข้อความยาวด้วย ..."""
+            if len(text) > max_chars:
+                return text[:max_chars-3] + "..."
+            return text
 
         # เลขม้วน
-        draw.text((t_x, t_y + (t_gap * 0)), f"SPECIFICAT ON : {roll_data_mock['specification']}", 
+        draw.text((t_x, t_y + (t_gap * 0)), f"ROLL ID : {data['roll_id']}", 
+                fill=self.color_text, font=font_large)
+
+        spec_text = truncate_text(data['specification'], 25)
+        draw.text((t_x, t_y + (t_gap * 1)), f"SPECIFICAT ON : {spec_text}", 
                 fill=self.color_text, font=font_large)
         
-        draw.text((t_x, t_y + (t_gap * 1)), f"PRODUCT : {roll_data_mock['product_name']}", 
+        product_text = truncate_text(data['product_name'], 25)
+        draw.text((t_x, t_y + (t_gap * 2)), f"PRODUCT : {product_text}", 
                 fill=self.color_text, font=font_large)
         
-        draw.text((t_x, t_y + (t_gap * 2)), f"COLOR : {roll_data_mock['colour']}", 
+        draw.text((t_x, t_y + (t_gap * 3)), f"COLOR : {data['colour']}", 
                 fill=self.color_text, font=font_large)
         
-        draw.text((t_x, t_y + (t_gap * 3)), f"PACKING UNIT : {roll_data_mock['packing_unit']}", 
+        draw.text((t_x, t_y + (t_gap * 4)), f"PACKING UNIT : {data['packing_unit']}", 
                 fill=self.color_text, font=font_large)
         
-        draw.text((t_x, t_y + (t_gap * 4)), f"GRADE : {roll_data_mock['grade']}", 
+        draw.text((t_x, t_y + (t_gap * 5)), f"WIDTH : {data.get('width', '')}", 
                 fill=self.color_text, font=font_large)
         
 
-
-        draw.text((width - 350, t_y - t_gap), "DATE  xx/xx/xxxx", 
+        # วันที่
+        draw.text((width - 350, t_y - t_gap), f"DATE  {data['date_received']}", 
                 fill=self.color_text, font=font_large)
 
-
+        # Lot No.
         lot_x = width - 400
         lot_y = 70
 
         draw.text((lot_x, lot_y), "LOT.", 
                 fill=self.color_text, font=font_large)
 
-        draw.text((lot_x + 100, lot_y - 20), f'{roll_data_mock['lot']}', 
+        draw.text((lot_x + 100, lot_y - 20), f'{data['lot']}', 
                 fill=self.color_text, font=ImageFont.truetype("arialbd.ttf", 64))
 
         

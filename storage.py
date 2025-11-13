@@ -33,6 +33,11 @@ class Roll:
     specification: str = ""
     colour: str = ""
     packing_unit: str = ""
+    pdt_code: str = ""
+    pdt_name: str = ""
+    subpart_code: str = ""
+    sup_code: str = ""
+    width: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -101,7 +106,12 @@ class StorageManager:
                 scrap_qty REAL,
                 specification TEXT,
                 colour TEXT,
-                packing_unit TEXT
+                packing_unit TEXT,
+                pdt_code TEXT,
+                pdt_name TEXT,
+                subpart_code TEXT,
+                sup_code TEXT,
+                width TEXT
             )
             """)
 
@@ -143,7 +153,8 @@ class StorageManager:
                     :roll_id, :sku, :lot, :current_length, :original_length,
                     :location, :grade, :date_received, :marks_no, :status,
                     :invoice_number, :po_number, :spl_name, :type_of_roll,
-                    :unit_type, :scrap_qty, :specification, :colour, :packing_unit
+                    :unit_type, :scrap_qty, :specification, :colour, :packing_unit,
+                    :pdt_code, :pdt_name, :subpart_code, :sup_code, :width
                 )
                 """, roll.to_dict())
                 conn.commit()
@@ -174,6 +185,17 @@ class StorageManager:
 
     def get_roll_by_id(self, roll_id: str) -> Optional[Roll]:
         return self.get_roll(roll_id)
+    
+    def get_roll_by_code(self, code: str) -> Optional[Roll]:
+        """ค้นหาม้วนจาก Code (SKU/PDT_CODE)"""
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM rolls WHERE sku = ? OR pdt_code = ? LIMIT 1", (code, code))
+            row = cur.fetchone()
+            if not row:
+                return None
+        
+        keys = [desc[0] for desc in cur.description]
+        return Roll(**dict(zip(keys, row)))
 
     def update_roll(self, roll_id: str, **updates) -> bool:
         if not updates:

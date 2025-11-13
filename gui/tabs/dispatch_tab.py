@@ -10,11 +10,12 @@ from datetime import datetime
 class DispatchQuantityDialog(QDialog):
     """Dialog สำหรับกรอกจำนวนที่ต้องการเบิกออก"""
     
-    def __init__(self, roll_id, available_length, parent=None):
+    def __init__(self, roll_id, available_length, width="", parent=None):
         super().__init__(parent)
         self.roll_id = roll_id
         self.available_length = available_length
-        self.dispatch_length = 0.0
+        self.width = width
+        self.dispatch_width = ""
         self.setup_ui()
     
     def setup_ui(self):
@@ -32,9 +33,9 @@ class DispatchQuantityDialog(QDialog):
         self.roll_id_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         info_layout.addRow("เลขม้วน:", self.roll_id_label)
         
-        self.available_label = QLabel(f"{self.available_length:.2f} cm")
-        self.available_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
-        info_layout.addRow("ความยาวคงเหลือ:", self.available_label)
+        self.width_label = QLabel(self.width)
+        self.width_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        info_layout.addRow("Width ปัจจุบัน:", self.width_label)
         
         info_group.setLayout(info_layout)
         layout.addWidget(info_group)
@@ -43,32 +44,18 @@ class DispatchQuantityDialog(QDialog):
         dispatch_group = QGroupBox("จำนวนที่ต้องการเบิก")
         dispatch_layout = QFormLayout()
         
-        self.length_input = QDoubleSpinBox()
-        self.length_input.setRange(0.01, self.available_length)
-        self.length_input.setDecimals(2)
-        self.length_input.setSuffix(" cm")
-        self.length_input.setValue(self.available_length)
-        self.length_input.setMinimumWidth(200)
-        self.length_input.valueChanged.connect(self.update_remaining)
-        dispatch_layout.addRow("ความยาวที่เบิก:", self.length_input)
+        self.dispatch_input = QLineEdit()
+        self.dispatch_input.setPlaceholderText(f"เช่น 25")
+        self.dispatch_input.setMinimumWidth(200)
+        self.dispatch_input.textChanged.connect(self.update_remaining)
+        dispatch_layout.addRow("Width ที่เบิก:", self.dispatch_input)
         
-        self.remaining_label = QLabel("0.00 cm")
+        self.remaining_label = QLabel("")
         self.remaining_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        dispatch_layout.addRow("คงเหลือหลังเบิก:", self.remaining_label)
+        dispatch_layout.addRow("Width คงเหลือ:", self.remaining_label)
         
         dispatch_group.setLayout(dispatch_layout)
         layout.addWidget(dispatch_group)
-        
-        # Quick select buttons
-        quick_layout = QHBoxLayout()
-        quick_layout.addWidget(QLabel("เลือกด่วน:"))
-        
-        for percent in [25, 50, 75, 100]:
-            btn = QPushButton(f"{percent}%")
-            btn.clicked.connect(lambda checked, p=percent: self.set_percentage(p))
-            quick_layout.addWidget(btn)
-        
-        layout.addLayout(quick_layout)
         
         # Buttons
         button_box = QDialogButtonBox(
@@ -81,27 +68,37 @@ class DispatchQuantityDialog(QDialog):
         # Initial update
         self.update_remaining()
     
-    def set_percentage(self, percent):
-        """ตั้งค่าเปอร์เซ็นต์ที่ต้องการเบิก"""
-        value = self.available_length * (percent / 100.0)
-        self.length_input.setValue(value)
-    
     def update_remaining(self):
-        """อัพเดทจำนวนคงเหลือ"""
-        dispatch = self.length_input.value()
-        remaining = self.available_length - dispatch
-        self.remaining_label.setText(f"{remaining:.2f} cm")
-        
-        if remaining < 0:
+        """คำนวน Width คงเหลือ"""
+        try:
+            dispatch_text = self.dispatch_input.text().strip()
+            if not dispatch_text:
+                self.remaining_label.setText("")
+                return
+            
+            # แยก width ปัจจุบัน (เช่น "30m" -> 30)
+            current_width_str = self.width.replace('m', '').replace('M', '').strip()
+            current_width = float(current_width_str) if current_width_str else 0
+            
+            # แยก width ที่เบิก (เช่น "25" -> 25)
+            dispatch_width = float(dispatch_text)
+            
+            # คำนวน width คงเหลือ
+            remaining_width = current_width - dispatch_width
+            
+            if remaining_width < 0:
+                self.remaining_label.setText(f"{remaining_width:.2f}m (ติดลบ!)")
+                self.remaining_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
+            else:
+                self.remaining_label.setText(f"{remaining_width:.2f}m")
+                self.remaining_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
+        except ValueError:
+            self.remaining_label.setText("ข้อมูลไม่ถูกต้อง")
             self.remaining_label.setStyleSheet("color: red; font-weight: bold; font-size: 14px;")
-        elif remaining == 0:
-            self.remaining_label.setStyleSheet("color: orange; font-weight: bold; font-size: 14px;")
-        else:
-            self.remaining_label.setStyleSheet("color: green; font-weight: bold; font-size: 14px;")
     
-    def get_dispatch_length(self):
-        """ดึงค่าความยาวที่เบิก"""
-        return self.length_input.value()
+    def get_dispatch_width(self):
+        """ดึงค่า Width ที่เบิก"""
+        return self.dispatch_input.text().strip()
 
 
 class DispatchTab(QWidget):
@@ -157,9 +154,9 @@ class DispatchTab(QWidget):
         history_layout = QVBoxLayout()
         
         self.history_table = QTableWidget()
-        self.history_table.setColumnCount(6)
+        self.history_table.setColumnCount(5)
         self.history_table.setHorizontalHeaderLabels([
-            "เวลา", "เลขม้วน", "SKU", "เบิกออก (cm)", "คงเหลือ (cm)", "สถานะ"
+            "เวลา", "เลขม้วน", "SKU", "Width ที่เบิก", "สถานะ"
         ])
         self.history_table.horizontalHeader().setStretchLastSection(True)
         self.history_table.setAlternatingRowColors(True)
@@ -174,70 +171,73 @@ class DispatchTab(QWidget):
     
     def process_scan(self):
         """ประมวลผลการสแกน"""
-        roll_id = self.roll_id_input.text().strip()
+        scan_input = self.roll_id_input.text().strip()
         
-        if not roll_id:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกเลขม้วน")
+        if not scan_input:
+            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกเลขม้วนหรือสแกน QR Code")
             return
         
         # ตรวจสอบว่ามีม้วนนี้ในระบบหรือไม่
-        roll = self.storage.get_roll_by_id(roll_id)
+        # ลองค้นหาจาก Roll ID ก่อน (เช่น R001)
+        roll = self.storage.get_roll_by_id(scan_input)
+        
+        # ถ้าไม่เจอ ลองค้นหาจาก Code (เช่น RM2061506007)
+        if not roll:
+            roll = self.storage.get_roll_by_code(scan_input)
         
         if not roll:
-            self.status_label.setText(f"❌ ไม่พบม้วนเลข {roll_id} ในระบบ")
+            self.status_label.setText(f"❌ ไม่พบม้วนเลข {scan_input} ในระบบ")
             self.status_label.setStyleSheet("padding: 10px; background-color: #ffebee; border-radius: 5px; color: red;")
             QMessageBox.warning(
                 self,
                 "ไม่พบข้อมูล",
-                f"ไม่พบม้วนเลข {roll_id} ในระบบ\n\nกรุณาตรวจสอบเลขม้วนหรือรับเข้าก่อน"
+                f"ไม่พบม้วนเลข {scan_input} ในระบบ\n\nกรุณาตรวจสอบเลขม้วนหรือรับเข้าก่อน"
             )
             return
         
         # ตรวจสอบสถานะม้วน
         if roll.status != 'active':
-            self.status_label.setText(f"❌ ม้วนเลข {roll_id} ถูกใช้งานหมดแล้ว")
+            self.status_label.setText(f"❌ ม้วนเลข {roll.roll_id} ถูกใช้งานหมดแล้ว")
             self.status_label.setStyleSheet("padding: 10px; background-color: #ffebee; border-radius: 5px; color: red;")
             QMessageBox.warning(
                 self,
                 "ไม่สามารถเบิกได้",
-                f"ม้วนเลข {roll_id} ถูกใช้งานหมดแล้ว (สถานะ: {roll.status})"
+                f"ม้วนเลข {roll.roll_id} ถูกใช้งานหมดแล้ว (สถานะ: {roll.status})"
             )
             return
         
         # แสดงข้อมูลม้วน
         self.status_label.setText(
-            f"✓ พบม้วน: {roll_id}\n"
+            f"✓ พบม้วน: {roll.roll_id}\n"
             f"SKU: {roll.sku} | Lot: {roll.lot}\n"
             f"ความยาวคงเหลือ: {roll.current_length:.2f} cm"
         )
         self.status_label.setStyleSheet("padding: 10px; background-color: #e8f5e9; border-radius: 5px; color: green;")
         
         # เปิด Dialog สำหรับกรอกจำนวนที่เบิก
-        dialog = DispatchQuantityDialog(roll_id, roll.current_length, self)
+        dialog = DispatchQuantityDialog(roll.roll_id, roll.current_length, roll.width, self)
         
         if dialog.exec() == QDialog.Accepted:
-            dispatch_length = dialog.get_dispatch_length()
-            self.dispatch_roll(roll, dispatch_length)
+            dispatch_width = dialog.get_dispatch_width()
+            self.dispatch_roll(roll, dispatch_width)
     
-    def dispatch_roll(self, roll, dispatch_length):
+    def dispatch_roll(self, roll, dispatch_width):
         """เบิกออกม้วนผ้า"""
         try:
-            # คำนวณความยาวคงเหลือ
-            new_length = roll.current_length - dispatch_length
+            # คำนวน width คงเหลือ
+            current_width_str = roll.width.replace('m', '').replace('M', '').strip()
+            current_width = float(current_width_str) if current_width_str else 0
+            dispatch_value = float(dispatch_width)
+            remaining_width = current_width - dispatch_value
             
-            # อัพเดทความยาวคงเหลือ
-            roll.current_length = new_length
-            
-            # อัพเดทสถานะถ้าใช้หมด
-            if new_length <= 0:
-                roll.status = 'depleted'
-                roll.current_length = 0
+            # สร้าง width string สำหรับบันทึก
+            remaining_width_str = f"{remaining_width:.2f}m" if remaining_width > 0 else "0m"
             
             # บันทึกการเปลี่ยนแปลง
             self.storage.update_roll(
                 roll.roll_id,
-                current_length=roll.current_length,
-                status=roll.status
+                width=remaining_width_str,
+                status='active'
             )
             
             # บันทึก log
@@ -247,27 +247,19 @@ class DispatchTab(QWidget):
                 details={
                     'sku': roll.sku,
                     'lot': roll.lot,
-                    'dispatch_length': dispatch_length,
-                    'remaining_length': roll.current_length,
-                    'status': roll.status
+                    'dispatch_width': dispatch_width,
+                    'remaining_width': remaining_width_str,
+                    'status': 'active'
                 }
             )
             
             # แสดงผลลัพธ์
-            if roll.status == 'depleted':
-                result_msg = (
-                    f"✓ เบิกออกสำเร็จ!\n"
-                    f"เลขม้วน: {roll.roll_id}\n"
-                    f"เบิกออก: {dispatch_length:.2f} cm\n"
-                    f"⚠️ ม้วนนี้ถูกใช้หมดแล้ว"
-                )
-            else:
-                result_msg = (
-                    f"✓ เบิกออกสำเร็จ!\n"
-                    f"เลขม้วน: {roll.roll_id}\n"
-                    f"เบิกออก: {dispatch_length:.2f} cm\n"
-                    f"คงเหลือ: {roll.current_length:.2f} cm"
-                )
+            result_msg = (
+                f"✓ เบิกออกสำเร็จ!\n"
+                f"เลขม้วน: {roll.roll_id}\n"
+                f"Width ที่เบิก: {dispatch_width}\n"
+                f"Width คงเหลือ: {remaining_width_str}"
+            )
             
             self.status_label.setText(result_msg)
             self.status_label.setStyleSheet("padding: 10px; background-color: #e3f2fd; border-radius: 5px; color: blue;")
@@ -289,9 +281,8 @@ class DispatchTab(QWidget):
             self.dispatch_completed.emit({
                 'roll_id': roll.roll_id,
                 'sku': roll.sku,
-                'dispatch_length': dispatch_length,
-                'remaining_length': roll.current_length,
-                'status': roll.status
+                'dispatch_width': dispatch_width,
+                'status': 'active'
             })
             
         except Exception as e:
@@ -337,23 +328,25 @@ class DispatchTab(QWidget):
                 sku_item = QTableWidgetItem(details.get('sku', ''))
                 self.history_table.setItem(row, 2, sku_item)
                 
-                # จำนวนที่เบิก
-                dispatch_item = QTableWidgetItem(f"{details.get('dispatch_length', 0):.2f}")
-                self.history_table.setItem(row, 3, dispatch_item)
+                # Width ที่เบิก
+                dispatch_width = details.get('dispatch_width', '')
+                width_item = QTableWidgetItem(dispatch_width)
+                self.history_table.setItem(row, 3, width_item)
                 
-                # คงเหลือ
-                remaining_item = QTableWidgetItem(f"{details.get('remaining_length', 0):.2f}")
-                self.history_table.setItem(row, 4, remaining_item)
+                # สถานะ - ตรวจสอบ remaining_width
+                remaining_width_str = details.get('remaining_width', '0m')
+                remaining_width_value = float(remaining_width_str.replace('m', '').replace('M', '').strip() or 0)
                 
-                # สถานะ
-                status = details.get('status', 'active')
-                status_text = "ใช้หมด" if status == 'depleted' else "ยังใช้ได้"
-                status_item = QTableWidgetItem(status_text)
-                if status == 'depleted':
-                    status_item.setForeground(Qt.red)
+                if remaining_width_value <= 0:
+                    status_text = "ใช้หมด"
+                    status_color = Qt.red
                 else:
-                    status_item.setForeground(Qt.green)
-                self.history_table.setItem(row, 5, status_item)
+                    status_text = "ยังใช้ได้"
+                    status_color = Qt.green
+                
+                status_item = QTableWidgetItem(status_text)
+                status_item.setForeground(status_color)
+                self.history_table.setItem(row, 4, status_item)
             
             # ปรับขนาดคอลัมน์
             self.history_table.resizeColumnsToContents()

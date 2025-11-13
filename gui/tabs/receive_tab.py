@@ -23,6 +23,7 @@ import sys
 import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from utils.label_generator import LabelGenerator
+from utils.roll_id_generator import RollIDGenerator
 from storage import Roll
 
 class MobileConnectionHandler(BaseHTTPRequestHandler):
@@ -352,12 +353,19 @@ class MobileConnectionServer(QObject):
 class ReceiveTab(QWidget):
     # Signal emitted when a new roll is received
     roll_received = pyqtSignal(dict)
+    # Signal emitted to refresh reports tab
+    refresh_reports = pyqtSignal()
     
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
         self.mobile_server = None
         self.label_generator = LabelGenerator()
+        
+        # Initialize Roll ID Generator
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+        self.roll_id_generator = RollIDGenerator(data_dir)
+        
         self.setup_ui()
         # self.load_master_data()  # Commented out because master_tab is not created
         
@@ -479,81 +487,75 @@ class ReceiveTab(QWidget):
         form_group = QGroupBox("Roll Information")
         form_layout = QFormLayout()
 
-        # Roll ID
-        self.manual_roll_id = QLineEdit()
-        self.manual_roll_id.setPlaceholderText("e.g., ROLL-1234")
-        form_layout.addRow("Roll ID*:", self.manual_roll_id)        
+        # Roll ID (Auto-generated, read-only)
+        self.manual_roll_id_label = QLabel("(Auto-generated)")
+        self.manual_roll_id_label.setStyleSheet("color: #666; font-style: italic;")
+        form_layout.addRow("Roll ID:", self.manual_roll_id_label)        
         
-        # SKU
-        self.manual_sku = QLineEdit()
-        self.manual_sku.setPlaceholderText("e.g., FAB-001")
-        form_layout.addRow("SKU*:", self.manual_sku)
+        # Code (SKU)
+        self.manual_code = QLineEdit()
+        self.manual_code.setPlaceholderText("e.g., RM2061406001")
+        form_layout.addRow("Code*:", self.manual_code)
         
-        # Lot
+        # SubPartCode
+        self.manual_subpart_code = QLineEdit()
+        self.manual_subpart_code.setPlaceholderText("e.g., SUB001")
+        form_layout.addRow("SubPartCode:", self.manual_subpart_code)
+        
+        # SupCode
+        self.manual_sup_code = QLineEdit()
+        self.manual_sup_code.setPlaceholderText("e.g., SUP001")
+        form_layout.addRow("SupCode:", self.manual_sup_code)
+        
+        # Supplier Name
+        self.manual_supplier_name = QLineEdit()
+        self.manual_supplier_name.setPlaceholderText("e.g., Supplier Name")
+        form_layout.addRow("Supplier Name:", self.manual_supplier_name)
+        
+        # Description
+        self.manual_description = QLineEdit()
+        self.manual_description.setPlaceholderText("e.g., Product Description")
+        form_layout.addRow("Description:", self.manual_description)
+        
+        # Lot No.
         self.manual_lot = QLineEdit()
         self.manual_lot.setPlaceholderText("e.g., LOT2023-001")
-        
-        # Length
-        self.manual_length = QDoubleSpinBox()
-        self.manual_length.setRange(0.01, 10000.0)
-        self.manual_length.setValue(100.0)
-        self.manual_length.setSuffix(" m")
-        self.manual_length.setDecimals(2)
-        
-        # Width (optional)
-        self.manual_width = QDoubleSpinBox()
-        self.manual_width.setRange(0.0, 100.0)
-        self.manual_width.setValue(1.5)
-        self.manual_width.setSuffix(" m")
-        self.manual_width.setDecimals(2)
-        
-        # Grade
-        self.manual_grade = QComboBox()
-        self.manual_grade.addItems(["A", "B", "C", "D"])
+        form_layout.addRow("Lot No.*:", self.manual_lot)
         
         # Location
         self.manual_location = QLineEdit()
         self.manual_location.setPlaceholderText("e.g., Warehouse A, Rack 1")
+        form_layout.addRow("Location:", self.manual_location)
         
-        # Specifications
-        self.manual_specifications = QLineEdit()
-        self.manual_specifications.setPlaceholderText("e.g., 100% Cotton")
-        
-        # Product
-        self.manual_product = QLineEdit()
-        self.manual_product.setPlaceholderText("e.g., Product Name")
+        # Unit (Packing Unit)
+        self.manual_unit = QLineEdit()
+        self.manual_unit.setPlaceholderText("e.g., MTS")
+        self.manual_unit.setText("MTS")
+        form_layout.addRow("Unit (Packing Unit):", self.manual_unit)
         
         # Colour
         self.manual_colour = QLineEdit()
-        self.manual_colour.setPlaceholderText("e.g., Red, Blue, etc.")
-        
-        # Package Unit
-        self.manual_package_unit = QLineEdit()
-        self.manual_package_unit.setPlaceholderText("e.g., Roll, Meter, etc.")
-        
-        # Date received
-        self.manual_date = QDateEdit()
-        self.manual_date.setCalendarPopup(True)
-        self.manual_date.setDate(QDate.currentDate())
-        
-        # Notes
-        self.manual_notes = QLineEdit()
-        self.manual_notes.setPlaceholderText("Optional notes...")
-        
-        # Add fields to form
-        form_layout.addRow("Lot*:", self.manual_lot)
-        form_layout.addRow("Length*:", self.manual_length)
-        form_layout.addRow("Width:", self.manual_width)
-        form_layout.addRow("Grade:", self.manual_grade)
-        form_layout.addRow("Location:", self.manual_location)
-        form_layout.addRow("Specifications:", self.manual_specifications)
-        form_layout.addRow("Product:", self.manual_product)
+        self.manual_colour.setPlaceholderText("e.g., Red, Blue, Green")
         form_layout.addRow("Colour:", self.manual_colour)
-        form_layout.addRow("Package Unit:", self.manual_package_unit)
-        form_layout.addRow("Date Received:", self.manual_date)
-        form_layout.addRow("Notes:", self.manual_notes)
+        
+        # Width
+        self.manual_width = QLineEdit()
+        self.manual_width.setPlaceholderText("e.g., 3.00 m")
+        form_layout.addRow("Width:", self.manual_width)
         
         form_group.setLayout(form_layout)
+        
+        # Keep old fields for internal use
+        self.manual_sku = self.manual_code  # Alias for backward compatibility
+        self.manual_specifications = self.manual_description  # Alias
+        self.manual_product = self.manual_description  # Alias
+        self.manual_package_unit = self.manual_unit  # Alias
+        self.manual_grade = QComboBox()  # Hidden
+        self.manual_grade.addItems(["A", "B", "C", "D"])
+        self.manual_date = QDateEdit()  # Hidden
+        self.manual_date.setCalendarPopup(True)
+        self.manual_date.setDate(QDate.currentDate())
+        self.manual_notes = QLineEdit()  # Hidden
         
         # Buttons
         btn_layout = QHBoxLayout()
@@ -874,19 +876,18 @@ class ReceiveTab(QWidget):
     
     def clear_manual_form(self):
         """Clear the manual entry form"""
-        self.manual_roll_id.clear()
-        self.manual_sku.clear()
+        self.manual_roll_id_label.setText("(Auto-generated)")
+        self.manual_code.clear()
+        self.manual_subpart_code.clear()
+        self.manual_sup_code.clear()
+        self.manual_supplier_name.clear()
+        self.manual_description.clear()
         self.manual_lot.clear()
-        self.manual_length.setValue(100.0)
-        self.manual_width.setValue(1.5)
-        self.manual_grade.setCurrentIndex(0)
         self.manual_location.clear()
-        self.manual_specifications.clear()
-        self.manual_product.clear()
         self.manual_colour.clear()
         self.manual_package_unit.clear()
+        self.manual_width.clear()
         self.manual_date.setDate(QDate.currentDate())
-        self.manual_notes.clear()
     
     def clear_master_form(self):
         """Clear the master entry form"""
@@ -904,44 +905,44 @@ class ReceiveTab(QWidget):
     
     def submit_manual_form(self):
         """Submit the manual entry form"""
-
-        if not self.manual_roll_id.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Roll ID is required!")
-            self.manual_roll_id.setFocus()
-            return
         
         # Validate required fields
-        if not self.manual_sku.text().strip():
-            QMessageBox.warning(self, "Validation Error", "SKU is required!")
-            self.manual_sku.setFocus()
+        if not self.manual_code.text().strip():
+            QMessageBox.warning(self, "Validation Error", "Code is required!")
+            self.manual_code.setFocus()
             return
         
         if not self.manual_lot.text().strip():
-            QMessageBox.warning(self, "Validation Error", "Lot number is required!")
+            QMessageBox.warning(self, "Validation Error", "Lot No. is required!")
             self.manual_lot.setFocus()
             return
         
-        # Get roll ID from input
-        roll_id = self.manual_roll_id.text().strip().upper()
-        sku = self.manual_sku.text().strip().upper()
+        # Generate Roll ID automatically (R001, R002, etc.)
+        roll_id = self.roll_id_generator.get_next_roll_id()
+        code = self.manual_code.text().strip().upper()
         lot = self.manual_lot.text().strip().upper()
         
         # Create roll data
         roll_data = {
             'roll_id': roll_id,
-            'sku': sku,
+            'sku': code,
+            'pdt_code': code,
+            'code': code,
+            'subpart_code': self.manual_subpart_code.text().strip(),
+            'spl_part_code': self.manual_subpart_code.text().strip(),
+            'sup_code': self.manual_sup_code.text().strip(),
+            'spl_code': self.manual_sup_code.text().strip(),
+            'supplier_name': self.manual_supplier_name.text().strip(),
+            'Suppliers': self.manual_supplier_name.text().strip(),
+            'description': self.manual_description.text().strip(),
+            'pdt_name': self.manual_description.text().strip(),
             'lot': lot,
-            'length': self.manual_length.value(),
-            'default_length': self.manual_length.value(),  # Add default_length
-            'width': self.manual_width.value(),
-            'grade': self.manual_grade.currentText(),
             'location': self.manual_location.text().strip(),
-            'specifications': self.manual_specifications.text().strip(),
-            'product': self.manual_product.text().strip(),
+            'unit_type': self.manual_unit.text().strip() or 'MTS',
+            'packing_unit': self.manual_unit.text().strip() or 'MTS',
             'colour': self.manual_colour.text().strip(),
-            'package_unit': self.manual_package_unit.text().strip(),
-            'date_received': self.manual_date.date().toString("yyyy-MM-dd"),
-            'notes': self.manual_notes.text().strip()
+            'width': self.manual_width.text().strip(),
+            'date_received': self.manual_date.date().toString("yyyy-MM-dd")
         }
         
         # Emit signal with roll data
@@ -1161,6 +1162,9 @@ class ReceiveTab(QWidget):
                 # Send roll data to Rolls Tab for processing
                 if hasattr(main_window.rolls_tab, 'add_new_roll'):
                     main_window.rolls_tab.add_new_roll(roll_data)
+            
+            # Emit signal to refresh Reports tab
+            self.refresh_reports.emit()
             
             # Switch to the rolls tab in the main window
             if hasattr(main_window, 'tab_widget'):

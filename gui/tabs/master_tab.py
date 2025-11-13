@@ -56,8 +56,11 @@ class MasterTab(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["SKU", "Description", "Default Length", "Default Grade"])
+        self.table.setColumnCount(9)
+        self.table.setHorizontalHeaderLabels([
+            "Code", "Roll ID", "SubPartCode", "SupCode", "Supplier Name", 
+            "Description", "Lot No.", "Location", "Unit"
+        ])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -70,10 +73,15 @@ class MasterTab(QWidget):
         layout.addWidget(self.table)
         
         # Set column widths
-        self.table.setColumnWidth(0, 150)  # SKU
-        self.table.setColumnWidth(1, 400)  # Description
-        self.table.setColumnWidth(2, 150)  # Default Length
-        self.table.setColumnWidth(3, 150)  # Default Grade
+        self.table.setColumnWidth(0, 120)  # Code
+        self.table.setColumnWidth(1, 80)   # Roll ID
+        self.table.setColumnWidth(2, 100)  # SubPartCode
+        self.table.setColumnWidth(3, 100)  # SupCode
+        self.table.setColumnWidth(4, 150)  # Supplier Name
+        self.table.setColumnWidth(5, 200)  # Description
+        self.table.setColumnWidth(6, 80)   # Lot No.
+        self.table.setColumnWidth(7, 100)  # Location
+        self.table.setColumnWidth(8, 80)   # Unit
     
     def load_data(self):
         """Load master products into the table"""
@@ -87,10 +95,15 @@ class MasterTab(QWidget):
             row = self.table.rowCount()
             self.table.insertRow(row)
             
-            self.table.setItem(row, 0, QTableWidgetItem(product.sku))
-            self.table.setItem(row, 1, QTableWidgetItem(product.description))
-            self.table.setItem(row, 2, QTableWidgetItem(f"{product.default_length:.2f}"))
-            self.table.setItem(row, 3, QTableWidgetItem(product.default_grade))
+            self.table.setItem(row, 0, QTableWidgetItem(product.sku or ""))  # Code
+            self.table.setItem(row, 1, QTableWidgetItem(""))  # Roll ID (empty for master)
+            self.table.setItem(row, 2, QTableWidgetItem(""))  # SubPartCode (empty for master)
+            self.table.setItem(row, 3, QTableWidgetItem(""))  # SupCode (empty for master)
+            self.table.setItem(row, 4, QTableWidgetItem(""))  # Supplier Name (empty for master)
+            self.table.setItem(row, 5, QTableWidgetItem(product.description or ""))  # Description
+            self.table.setItem(row, 6, QTableWidgetItem(""))  # Lot No. (empty for master)
+            self.table.setItem(row, 7, QTableWidgetItem(""))  # Location (empty for master)
+            self.table.setItem(row, 8, QTableWidgetItem(f"{product.default_grade or ''}"))  # Unit (use Default Grade)
     
     def filter_table(self):
         """Filter the table based on search text"""

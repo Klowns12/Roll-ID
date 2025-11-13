@@ -103,14 +103,16 @@ class RollsTab(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(10)
         self.table.setHorizontalHeaderLabels([
             "",  # For selection
             "Roll ID",
-            "SKU",
-            "Lot",
-            "Current Length",
-            "Original Length",
+            "Code",
+            "SubPartCode",
+            "SupCode",
+            "Supplier Name",
+            "Description",
+            "Lot No.",
             "Location",
             "Status"
         ])
@@ -166,14 +168,28 @@ class RollsTab(QWidget):
             # Create a new roll object
             roll = Roll(
                 roll_id=roll_data['roll_id'],
-                sku=roll_data['sku'],
+                sku=roll_data.get('sku', roll_data.get('code', '')),
                 lot=roll_data['lot'],
-                current_length=float(roll_data['length']),
-                original_length=float(roll_data['length']),
+                current_length=float(roll_data.get('length', 0)),
+                original_length=float(roll_data.get('length', 0)),
                 location=roll_data.get('location', ''),
                 grade=roll_data.get('grade', 'A'),
                 date_received=roll_data.get('date_received', datetime.now().strftime("%Y-%m-%d")),
-                status='active'
+                status='active',
+                specification=roll_data.get('specifications', roll_data.get('specification', roll_data.get('description', ''))),
+                colour=roll_data.get('colour', ''),
+                packing_unit=roll_data.get('package_unit', roll_data.get('packing_unit', roll_data.get('unit_type', 'MTS'))),
+                unit_type=roll_data.get('unit_type', 'MTS'),
+                type_of_roll=roll_data.get('type_of_roll', ''),
+                marks_no=roll_data.get('marks_no', ''),
+                invoice_number=roll_data.get('invoice_number', ''),
+                po_number=roll_data.get('po_number', ''),
+                spl_name=roll_data.get('spl_name', roll_data.get('supplier_name', '')),
+                pdt_code=roll_data.get('pdt_code', roll_data.get('code', '')),
+                pdt_name=roll_data.get('pdt_name', roll_data.get('description', roll_data.get('product', ''))),
+                subpart_code=roll_data.get('subpart_code', roll_data.get('spl_part_code', '')),
+                sup_code=roll_data.get('sup_code', roll_data.get('spl_code', '')),
+                width=roll_data.get('width', '')
             )
             
             # Add to storage
@@ -342,11 +358,13 @@ class RollsTab(QWidget):
         
         # Add roll data
         self.table.setItem(row, 1, QTableWidgetItem(roll.roll_id))
-        self.table.setItem(row, 2, QTableWidgetItem(roll.sku))
-        self.table.setItem(row, 3, QTableWidgetItem(roll.lot))
-        self.table.setItem(row, 4, QTableWidgetItem(f"{roll.current_length:.2f}"))
-        self.table.setItem(row, 5, QTableWidgetItem(f"{roll.original_length:.2f}"))
-        self.table.setItem(row, 6, QTableWidgetItem(roll.location))
+        self.table.setItem(row, 2, QTableWidgetItem(roll.pdt_code or roll.sku))  # Code
+        self.table.setItem(row, 3, QTableWidgetItem(roll.subpart_code or ""))  # SubPartCode
+        self.table.setItem(row, 4, QTableWidgetItem(roll.sup_code or ""))  # SupCode
+        self.table.setItem(row, 5, QTableWidgetItem(roll.spl_name))  # Supplier Name
+        self.table.setItem(row, 6, QTableWidgetItem(roll.pdt_name or roll.specification))  # Description
+        self.table.setItem(row, 7, QTableWidgetItem(roll.lot))  # Lot No.
+        self.table.setItem(row, 8, QTableWidgetItem(roll.location))  # Location
         
         # Status with color coding
         status_item = QTableWidgetItem(roll.status.capitalize())
@@ -354,7 +372,7 @@ class RollsTab(QWidget):
             status_item.setForeground(Qt.GlobalColor.darkGreen)
         else:
             status_item.setForeground(Qt.GlobalColor.darkRed)
-        self.table.setItem(row, 7, status_item)
+        self.table.setItem(row, 9, status_item)
     
     def apply_filters(self):
         """Apply filters to the table"""
@@ -458,16 +476,22 @@ class RollsTab(QWidget):
         roll_data = {
             'roll_id': roll.roll_id,
             'sku': roll.sku,
+            'pdt_code': roll.pdt_code,
             'lot': roll.lot,
             'date_received': roll.date_received,
             'specification': roll.specification,
+            'pdt_name': roll.pdt_name,
+            'product_name': roll.pdt_name,
             'colour': roll.colour,
             'packing_unit': roll.packing_unit,
+            'package_unit': roll.packing_unit,
             'unit_type': roll.unit_type,
             'grade': roll.grade,
             'type_of_roll': roll.type_of_roll,
             'marks_no': roll.marks_no,
-            'current_length': roll.current_length
+            'current_length': roll.current_length,
+            'width': getattr(roll, 'width', ''),
+            'spl_name': roll.spl_name
         }
         
         # Generate and show print preview

@@ -62,7 +62,7 @@ class DashboardTab(QWidget):
         
         self.recent_rolls_table = QTableWidget()
         self.recent_rolls_table.setColumnCount(5)
-        self.recent_rolls_table.setHorizontalHeaderLabels(["Roll ID", "SKU", "Lot", "Length", "Location"])
+        self.recent_rolls_table.setHorizontalHeaderLabels(["Roll ID", "SKU", "Lot", "Width", "Location"])
         self.recent_rolls_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.recent_rolls_table.verticalHeader().setVisible(False)
         self.recent_rolls_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -198,7 +198,7 @@ class DashboardTab(QWidget):
             self.recent_rolls_table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
             self.recent_rolls_table.setItem(row, 1, QTableWidgetItem(roll.sku))
             self.recent_rolls_table.setItem(row, 2, QTableWidgetItem(roll.lot))
-            self.recent_rolls_table.setItem(row, 3, QTableWidgetItem(f"{roll.current_length:.2f} / {roll.original_length:.2f}"))
+            self.recent_rolls_table.setItem(row, 3, QTableWidgetItem(roll.width or ""))
             self.recent_rolls_table.setItem(row, 4, QTableWidgetItem(roll.location))
             
             # Color code based on status
