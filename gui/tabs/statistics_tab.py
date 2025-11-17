@@ -38,24 +38,24 @@ class StatisticsTab(QWidget):
         filter_group = QGroupBox("ค้นหา / Search")
         filter_layout = QVBoxLayout()
         
-        # Row 1: Group, Category
-        row1_layout = QHBoxLayout()
-        row1_layout.addWidget(QLabel("Group"))
-        self.group_combo = QComboBox()
-        self.group_combo.addItems(["All", "Group 1", "Group 2"])
-        self.group_combo.setMaximumWidth(150)
-        row1_layout.addWidget(self.group_combo)
+        # # Row 1: Group, Category
+        # row1_layout = QHBoxLayout()
+        # row1_layout.addWidget(QLabel("Group"))
+        # self.group_combo = QComboBox()
+        # self.group_combo.addItems(["All", "Group 1", "Group 2"])
+        # self.group_combo.setMaximumWidth(150)
+        # row1_layout.addWidget(self.group_combo)
         
-        row1_layout.addSpacing(20)
+        # row1_layout.addSpacing(20)
         
-        row1_layout.addWidget(QLabel("Category"))
-        self.category_combo = QComboBox()
-        self.category_combo.addItems(["All", "Category 1", "Category 2"])
-        self.category_combo.setMaximumWidth(150)
-        row1_layout.addWidget(self.category_combo)
+        # row1_layout.addWidget(QLabel("Category"))
+        # self.category_combo = QComboBox()
+        # self.category_combo.addItems(["All", "Category 1", "Category 2"])
+        # self.category_combo.setMaximumWidth(150)
+        # row1_layout.addWidget(self.category_combo)
         
-        row1_layout.addStretch()
-        filter_layout.addLayout(row1_layout)
+        # row1_layout.addStretch()
+        # filter_layout.addLayout(row1_layout)
         
         # Row 2: Suppliers, Code
         row2_layout = QHBoxLayout()
@@ -81,51 +81,51 @@ class StatisticsTab(QWidget):
         filter_group.setLayout(filter_layout)
         layout.addWidget(filter_group)
         
-        # ===== CHECK QTY SECTION =====
-        qty_group = QGroupBox("Check QTY")
-        qty_layout = QHBoxLayout()
+        # # ===== CHECK QTY SECTION =====
+        # qty_group = QGroupBox("Check QTY")
+        # qty_layout = QHBoxLayout()
         
-        self.qty_all_radio = QRadioButton("All")
-        self.qty_all_radio.setChecked(True)
-        self.qty_min_radio = QRadioButton("Min")
-        self.qty_max_radio = QRadioButton("Max")
+        # self.qty_all_radio = QRadioButton("All")
+        # self.qty_all_radio.setChecked(True)
+        # self.qty_min_radio = QRadioButton("Min")
+        # self.qty_max_radio = QRadioButton("Max")
         
-        qty_layout.addWidget(self.qty_all_radio)
-        qty_layout.addWidget(self.qty_min_radio)
-        qty_layout.addWidget(self.qty_max_radio)
-        qty_layout.addStretch()
-        qty_group.setLayout(qty_layout)
-        layout.addWidget(qty_group)
+        # qty_layout.addWidget(self.qty_all_radio)
+        # qty_layout.addWidget(self.qty_min_radio)
+        # qty_layout.addWidget(self.qty_max_radio)
+        # qty_layout.addStretch()
+        # qty_group.setLayout(qty_layout)
+        # layout.addWidget(qty_group)
         
-        # ===== MATERIAL STATUS SECTION =====
-        status_group = QGroupBox("Material status")
-        status_layout = QHBoxLayout()
+        # # ===== MATERIAL STATUS SECTION =====
+        # status_group = QGroupBox("Material status")
+        # status_layout = QHBoxLayout()
         
-        self.status_active_radio = QRadioButton("Active")
-        self.status_active_radio.setChecked(True)
-        self.status_inactive_radio = QRadioButton("Inactive")
-        self.status_all_radio = QRadioButton("All")
+        # self.status_active_radio = QRadioButton("Active")
+        # self.status_active_radio.setChecked(True)
+        # self.status_inactive_radio = QRadioButton("Inactive")
+        # self.status_all_radio = QRadioButton("All")
         
-        status_layout.addWidget(self.status_active_radio)
-        status_layout.addWidget(self.status_inactive_radio)
-        status_layout.addWidget(self.status_all_radio)
-        status_layout.addStretch()
-        status_group.setLayout(status_layout)
-        layout.addWidget(status_group)
+        # status_layout.addWidget(self.status_active_radio)
+        # status_layout.addWidget(self.status_inactive_radio)
+        # status_layout.addWidget(self.status_all_radio)
+        # status_layout.addStretch()
+        # status_group.setLayout(status_layout)
+        # layout.addWidget(status_group)
         
-        # ===== MATERIAL LIST SECTION =====
-        list_group = QGroupBox("Material list of")
-        list_layout = QHBoxLayout()
+        # # ===== MATERIAL LIST SECTION =====
+        # list_group = QGroupBox("Material list of")
+        # list_layout = QHBoxLayout()
         
-        self.list_all_radio = QRadioButton("All")
-        self.list_all_radio.setChecked(True)
-        self.list_existing_radio = QRadioButton("Existing")
+        # self.list_all_radio = QRadioButton("All")
+        # self.list_all_radio.setChecked(True)
+        # self.list_existing_radio = QRadioButton("Existing")
         
-        list_layout.addWidget(self.list_all_radio)
-        list_layout.addWidget(self.list_existing_radio)
-        list_layout.addStretch()
-        list_group.setLayout(list_layout)
-        layout.addWidget(list_group)
+        # list_layout.addWidget(self.list_all_radio)
+        # list_layout.addWidget(self.list_existing_radio)
+        # list_layout.addStretch()
+        # list_group.setLayout(list_layout)
+        # layout.addWidget(list_group)
         
         # ===== BUTTONS SECTION =====
         btn_layout = QHBoxLayout()

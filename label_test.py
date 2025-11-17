@@ -6,15 +6,15 @@ if __name__ == "__main__":
     generator = LabelGenerator()
 
     # ข้อมูลทดสอบ
-    roll_data = {
-        "roll_id": "ROLL-12345",
-        "sku": "FAB001",
-        "lot": "LOT-567",
-        "length": 124.56,
-        "grade": "A",
-        "date_received": "2025-11-08",
-        "location": "Warehouse A"
-    }
+    # roll_data = {
+    #     "roll_id": "ROLL-12345",
+    #     "sku": "FAB001",
+    #     "lot": "LOT-567",
+    #     "length": 124.56,
+    #     "grade": "A",
+    #     "date_received": "2025-11-08",
+    #     "location": "Warehouse A"
+    # }
 
     # สร้าง label
     label_img = generator.create_label(roll_data)

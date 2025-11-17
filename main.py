@@ -57,10 +57,9 @@ class FabricRollApp(QApplication):
             # Start API server
             self.start_api_server()
             
-            # Skip login and go directly to main window (for testing)
+            # Show main window without login (Reports tab visible first)
             self.main_window = None
-            self.show_login()
-            # self.skip_login_for_testing()
+            self.show_main_window_without_login()
             
         except Exception as e:
             logger.critical(f"Failed to initialize application: {e}", exc_info=True)
@@ -72,32 +71,43 @@ class FabricRollApp(QApplication):
             )
             self.quit()
     
-    def skip_login_for_testing(self):
-        """Skip login and go directly to main window (for testing)"""
+    def show_main_window_without_login(self):
+        """Show main window without login (Reports tab visible first)"""
         try:
-            # Get or create admin user for testing
-            admin_user = self.auth_manager.get_user("admin")
-            if not admin_user:
-                # Create admin user if it doesn't exist
-                self.auth_manager.add_user("admin", "admin", "Admin User", is_admin=True)
-                admin_user = self.auth_manager.get_user("admin")
+            logger.info("Showing main window without login")
             
-            logger.info(f"User {admin_user.username} logged in (testing mode - login skipped)")
-            
-            # Create and show main window with authenticated user
+            # Create and show main window without authenticated user
             if self.main_window:
                 self.main_window.close()
             
             self.main_window = MainWindow(
                 self.storage, 
                 self.auth_manager, 
-                admin_user
+                current_user=None,
+                app=self
             )
             self.main_window.show()
             
         except Exception as e:
-            logger.error(f"Error in skip_login_for_testing: {e}")
+            logger.error(f"Error in show_main_window_without_login: {e}")
             self.quit()
+    
+    def show_login_dialog(self):
+        """Show login dialog from main window"""
+        login_dialog = LoginDialog(self.auth_manager)
+        
+        if login_dialog.exec() == LoginDialog.DialogCode.Accepted:
+            authenticated_user = login_dialog.get_authenticated_user()
+            if authenticated_user:
+                logger.info(f"User {authenticated_user.username} logged in successfully")
+                
+                # Update main window with authenticated user
+                if self.main_window:
+                    self.main_window.set_current_user(authenticated_user)
+            else:
+                logger.info("Login failed")
+        else:
+            logger.info("Login cancelled by user")
     
     def show_login(self):
         """Show login dialog"""

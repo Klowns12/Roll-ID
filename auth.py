@@ -183,6 +183,10 @@ class AuthManager:
         self.save_users()
         return True
     
+    def get_user(self, username: str) -> Optional[User]:
+        """Get user by username"""
+        return self.users.get(username)
+    
     def get_all_users(self) -> List[User]:
         """Get all users (admin only)"""
         return list(self.users.values())

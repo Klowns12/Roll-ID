@@ -13,19 +13,22 @@ from .tabs.dispatch_tab import DispatchTab
 from .tabs.rolls_tab import RollsTab
 from .tabs.logs_tab import LogsTab
 from .tabs.statistics_tab import StatisticsTab
-
+from .tabs.scan_tab import ScanTab
 class MainWindow(QMainWindow):
-    def __init__(self, storage, auth_manager=None, current_user=None):
+    def __init__(self, storage, auth_manager=None, current_user=None, app=None):
         super().__init__()
         self.storage = storage
         self.auth_manager = auth_manager
         self.current_user = current_user
+        self.app = app
         
         # Set window title with user info
         title = "Fabric Roll Management System"
         if self.current_user:
             role = "Admin" if self.current_user.is_admin() else "User"
             title += f" - {self.current_user.full_name} ({role})"
+        else:
+            title += " - Guest"
         self.setWindowTitle(title)
         self.setMinimumSize(1024, 768)
         
@@ -62,25 +65,32 @@ class MainWindow(QMainWindow):
         self.rolls_tab = RollsTab(self.storage)
         self.logs_tab = LogsTab(self.storage)
         self.statistics_tab = StatisticsTab(self.storage)
+        self.scan_tab = ScanTab(self.storage)
         
-        # Add common tabs
-        self.tab_widget.addTab(self.dashboard_tab, "Dashboard")
-        
-        # Add Master Data tab only for admin users
-        if self.current_user and self.current_user.is_admin():
-            self.master_tab = MasterTab(self.storage)
-            self.tab_widget.addTab(self.master_tab, "Master Data")
-            self.tab_widget.addTab(self.receive_tab, "รับเข้า / Receive")
-            self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
-            self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
-        else:
+        # If not logged in, show only Reports tab
+        if not self.current_user:
+            self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
             self.master_tab = None
-        
-        # self.tab_widget.addTab(self.receive_tab, "รับเข้า / Receive")
-        # self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
-        # self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
-        self.tab_widget.addTab(self.logs_tab, "Logs")
-        self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
+        else:
+            # Admin: Dashboard, Master Data, Receive, Rolls, Dispatch, Logs, Reports
+            if self.current_user.is_admin():
+                self.master_tab = MasterTab(self.storage)
+                self.tab_widget.addTab(self.dashboard_tab, "Dashboard")
+                self.tab_widget.addTab(self.master_tab, "Master Data")
+                self.tab_widget.addTab(self.scan_tab, "Scan QR")
+                self.tab_widget.addTab(self.receive_tab, "รับเข้าสร้าง QR / Receive")
+                self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
+                self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
+                self.tab_widget.addTab(self.logs_tab, "Logs")
+                self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
+            else:
+                # User: Receive, Rolls, Dispatch, Reports (no Dashboard, Master Data, Logs)
+                self.master_tab = None
+                self.tab_widget.addTab(self.scan_tab, "Scan QR")
+                self.tab_widget.addTab(self.receive_tab, "รับเข้าสร้าง QR / Receive")
+                self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
+                self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
+                self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
         
         layout.addWidget(self.tab_widget)
     
@@ -124,27 +134,35 @@ class MainWindow(QMainWindow):
         # User menu
         user_menu = menubar.addMenu("&User")
         
-        # Change password action
-        change_password_action = QAction("Change &Password", self)
-        change_password_action.setStatusTip("Change your password")
-        change_password_action.triggered.connect(self.change_password)
-        user_menu.addAction(change_password_action)
-        
-        # User management action (admin only)
-        if self.current_user and self.current_user.is_admin():
-            manage_users_action = QAction("&Manage Users", self)
-            manage_users_action.setStatusTip("Manage user accounts")
-            manage_users_action.triggered.connect(self.manage_users)
-            user_menu.addAction(manage_users_action)
-        
-        user_menu.addSeparator()
-        
-        # Logout action
-        logout_action = QAction("&Logout", self)
-        logout_action.setShortcut("Ctrl+L")
-        logout_action.setStatusTip("Logout from the system")
-        logout_action.triggered.connect(self.logout)
-        user_menu.addAction(logout_action)
+        if self.current_user:
+            # Change password action
+            change_password_action = QAction("Change &Password", self)
+            change_password_action.setStatusTip("Change your password")
+            change_password_action.triggered.connect(self.change_password)
+            user_menu.addAction(change_password_action)
+            
+            # User management action (admin only)
+            if self.current_user.is_admin():
+                manage_users_action = QAction("&Manage Users", self)
+                manage_users_action.setStatusTip("Manage user accounts")
+                manage_users_action.triggered.connect(self.manage_users)
+                user_menu.addAction(manage_users_action)
+            
+            user_menu.addSeparator()
+            
+            # Logout action
+            logout_action = QAction("&Logout", self)
+            logout_action.setShortcut("Ctrl+L")
+            logout_action.setStatusTip("Logout from the system")
+            logout_action.triggered.connect(self.logout)
+            user_menu.addAction(logout_action)
+        else:
+            # Login action (when not logged in)
+            login_action = QAction("&Login", self)
+            login_action.setShortcut("Ctrl+L")
+            login_action.setStatusTip("Login to the system")
+            login_action.triggered.connect(self.login)
+            user_menu.addAction(login_action)
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -203,7 +221,7 @@ class MainWindow(QMainWindow):
         <p>Version 1.0.0</p>
         <p>A desktop application for managing fabric rolls, generating QR labels, 
         and tracking roll usage.</p>
-        <p>© 2025 Your Company Name</p>
+        <p>© 2025 Aurelic Systems</p>
         """
         QMessageBox.about(self, "About Fabric Roll Management System", about_text)
     
@@ -464,8 +482,64 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, "Error", "ไม่สามารถรีเซ็ตรหัสผ่านได้ / Failed to reset password")
     
+    def login(self):
+        """Show login dialog"""
+        if self.app:
+            self.app.show_login_dialog()
+    
+    def set_current_user(self, user):
+        """Set current user and update UI"""
+        self.current_user = user
+        
+        # Update window title
+        title = "Fabric Roll Management System"
+        if self.current_user:
+            role = "Admin" if self.current_user.is_admin() else "User"
+            title += f" - {self.current_user.full_name} ({role})"
+        else:
+            title += " - Guest"
+        self.setWindowTitle(title)
+        
+        # Refresh UI to show/hide tabs based on user role
+        self.refresh_tabs()
+        
+        # Refresh menu
+        menubar = self.menuBar()
+        menubar.clear()
+        self.setup_menu()
+    
+    def refresh_tabs(self):
+        """Refresh tabs based on current user"""
+        # Clear all tabs
+        while self.tab_widget.count() > 0:
+            self.tab_widget.removeTab(0)
+        
+        # If not logged in, show only Reports tab
+        if not self.current_user:
+            self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
+        else:
+            # Admin: Dashboard, Master Data, Scan QR, Receive, Rolls, Dispatch, Logs, Reports
+            if self.current_user.is_admin():
+                self.tab_widget.addTab(self.dashboard_tab, "Dashboard")
+                self.master_tab = MasterTab(self.storage)
+                self.tab_widget.addTab(self.master_tab, "Master Data")
+                self.tab_widget.addTab(self.scan_tab, "Scan QR")
+                self.tab_widget.addTab(self.receive_tab, "รับเข้าสร้าง QR / Receive")
+                self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
+                self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
+                self.tab_widget.addTab(self.logs_tab, "Logs")
+                self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
+            else:
+                # User: Scan QR, Receive, Rolls, Dispatch, Reports (no Dashboard, Master Data, Logs)
+                self.master_tab = None
+                self.tab_widget.addTab(self.scan_tab, "Scan QR")
+                self.tab_widget.addTab(self.receive_tab, "รับเข้าสร้าง QR / Receive")
+                self.tab_widget.addTab(self.rolls_tab, "จัดการม้วน / Rolls")
+                self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
+                self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
+    
     def logout(self):
-        """Logout and close application"""
+        """Logout and return to guest view"""
         reply = QMessageBox.question(
             self,
             'ออกจากระบบ / Logout',
@@ -477,7 +551,6 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             if self.auth_manager:
                 self.auth_manager.logout()
-            self.close()
-            # Signal the app to show login again
-            if hasattr(self.parent(), 'show_login'):
-                self.parent().show_login()
+            
+            # Set current user to None and refresh UI
+            self.set_current_user(None)

@@ -193,36 +193,40 @@ class MasterSuppliersManager:
             
             # ถ้าค้นหา code ที่ตรงกัน ให้แสดงทั้งหมดจากทุกตาราง
             if search_query.strip() and not supplier_name.strip():
-                # ค้นหา Code, Roll ID, Lot จากทุกตาราง
+                # ค้นหา Code, Location, Roll ID, Lot จากทุกตาราง
                 code_matches = []
                 
                 # ค้นหาจาก MasterDATA
                 if self.master_data is not None:
                     master_results = self.master_data[
-                        self.master_data['pdt_code'].astype(str).str.contains(search_query, case=False, na=False)
+                        (self.master_data['pdt_code'].astype(str).str.contains(search_query, case=False, na=False)) |
+                        (self.master_data['Location'].astype(str).str.contains(search_query, case=False, na=False))
                     ]
                     code_matches.extend(master_results.to_dict('records'))
                 
                 # ค้นหาจาก Suppliers.csv
                 if self.suppliers_data is not None:
                     suppliers_results = self.suppliers_data[
-                        self.suppliers_data['Code'].astype(str).str.contains(search_query, case=False, na=False)
+                        (self.suppliers_data['Code'].astype(str).str.contains(search_query, case=False, na=False)) |
+                        (self.suppliers_data['Location'].astype(str).str.contains(search_query, case=False, na=False))
                     ]
                     code_matches.extend(suppliers_results.to_dict('records'))
                 
                 # ค้นหาจาก Master_Dispatch.csv
                 if self.dispatch_data is not None:
                     dispatch_results = self.dispatch_data[
-                        self.dispatch_data['code'].astype(str).str.contains(search_query, case=False, na=False)
+                        (self.dispatch_data['code'].astype(str).str.contains(search_query, case=False, na=False)) |
+                        (self.dispatch_data['location'].astype(str).str.contains(search_query, case=False, na=False))
                     ]
                     code_matches.extend(dispatch_results.to_dict('records'))
                 
-                # ค้นหาจาก Rolls (storage.db) - สำหรับ roll_id และ lot
+                # ค้นหาจาก Rolls (storage.db) - สำหรับ roll_id, lot, location
                 if self.rolls_data is not None:
                     rolls_results = self.rolls_data[
                         (self.rolls_data['roll_id'].astype(str).str.contains(search_query, case=False, na=False)) |
                         (self.rolls_data['lot'].astype(str).str.contains(search_query, case=False, na=False)) |
-                        (self.rolls_data['sku'].astype(str).str.contains(search_query, case=False, na=False))
+                        (self.rolls_data['sku'].astype(str).str.contains(search_query, case=False, na=False)) |
+                        (self.rolls_data['location'].astype(str).str.contains(search_query, case=False, na=False))
                     ]
                     code_matches.extend(rolls_results.to_dict('records'))
                 
