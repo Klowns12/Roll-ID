@@ -6,13 +6,23 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, Signal as pyqtSignal, QObject, QTimer
 from PySide6.QtGui import QPixmap
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
-import queue
+
+
+from io import BytesIO
 import json
-import os
-import sys
-import re
 from datetime import datetime
+
+import os
+
+import qrcode
+
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+import sys
+import pandas as pd
+
+from utils.mobile_scan_service.mobile_connection_server import MobileConnectionServer
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from utils.label_generator import LabelGenerator
@@ -21,322 +31,8 @@ from utils.master_suppliers_manager import MasterSuppliersManager
 from storage import Roll
 
 
-class MobileConnectionHandler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
-        """Suppress logging messages"""
-        pass
-    
-    def do_GET(self):
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html; charset=utf-8')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-            self.send_header('Cache-Control', 'no-cache')
-            self.end_headers()
-            
-            # Simple HTML page with QR scanner
-            html = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>Roll ID Scanner</title>
-                <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        max-width: 800px;
-                        margin: 0 auto;
-                        padding: 20px;
-                        text-align: center;
-                    }
-                    #reader {
-                        width: 100%;
-                        max-width: 500px;
-                        margin: 20px auto;
-                        border: 2px solid #ccc;
-                        border-radius: 8px;
-                        overflow: hidden;
-                    }
-                    #result {
-                        margin-top: 20px;
-                        padding: 10px;
-                        border-radius: 5px;
-                    }
-                    .success {
-                        background-color: #dff0d8;
-                        color: #3c763d;
-                    }
-                    .error {
-                        background-color: #f2dede;
-                        color: #a94442;
-                    }
-                    button {
-                        background-color: #337ab7;
-                        color: white;
-                        border: none;
-                        padding: 10px 20px;
-                        text-align: center;
-                        text-decoration: none;
-                        display: inline-block;
-                        font-size: 16px;
-                        margin: 10px 5px;
-                        cursor: pointer;
-                        border-radius: 4px;
-                    }
-                </style>
-            </head>
-            <body>
-                <h2>Roll ID Scanner</h2>
-                <div id="camera-container" style="text-align: center;">
-                    <div id="reader" style="margin: 0 auto;"></div>
-                    <div style="margin: 10px 0;">
-                        <button id="stopButton" style="display: none; background-color: #d9534f;">หยุดกล้อง</button>
-                    </div>
-                </div>
-                <div id="result"></div>
-                <div id="instructions" style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                    <h3>คำแนะนำการใช้งาน</h3>
-                    <ol>
-                        <li>อนุญาตให้เว็บไซต์ใช้กล้องเมื่อมีข้อความแจ้งเตือน</li>
-                        <li>นำกล้องไปที่ QR Code ที่ต้องการสแกน</li>
-                        <li>ระบบจะประมวลผลข้อมูลโดยอัตโนมัติ</li>
-                    </ol>
-                </div>
-
-                <script>
-                    const html5QrCode = new Html5Qrcode("reader");
-                    const resultContainer = document.getElementById('result');
-                    const cameraContainer = document.getElementById('camera-container');
-                    const stopButton = document.getElementById('stopButton');
-                    let isScanning = false;
-                    
-                    // Show initial message
-                    resultContainer.innerHTML = '<p>กำลังเริ่มต้นกล้อง กรุณารอสักครู่...</p>';
-
-                    function onScanSuccess(decodedText, decodedResult) {
-                        resultContainer.innerHTML = `
-                            <p class="success">
-                                <strong>Scanned:</strong> ${decodedText}
-                            </p>
-                            <p>Processing data...</p>
-                        `;
-                        
-                        // Send the scanned data to the server
-                        fetch('/process_scan', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ data: decodedText })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            resultContainer.innerHTML += `
-                                <p class="success">
-                                    <strong>Status:</strong> ${data.status}
-                                </p>
-                                <p>${data.message || ''}</p>
-                            `;
-                        })
-                        .catch(error => {
-                            resultContainer.innerHTML += `
-                                <p class="error">
-                                    Error: ${error.message}
-                                </p>
-                            `;
-                        });
-                    }
-
-                    function onScanFailure(error) {
-                        // Handle scan failure
-                    }
-
-                    // Start camera automatically when page loads
-                    function startScanner() {
-                        if (!isScanning) {
-                            resultContainer.innerHTML = '<p>กำลังเริ่มต้นกล้อง กรุณาอนุญาตการเข้าถึงกล้อง...</p>';
-                            
-                            html5QrCode.start(
-                                { 
-                                    facingMode: "environment",
-                                    aspectRatio: 1.0
-                                },
-                                {
-                                    fps: 10,
-                                    qrbox: { width: 200, height: 200 },
-                                    disableFlip: false
-                                },
-                                onScanSuccess,
-                                onScanFailure
-                            ).then(() => {
-                                isScanning = true;
-                                stopButton.style.display = 'inline-block';
-                                resultContainer.innerHTML = '<p class="success">กำลังสแกน... นำกล้องไปที่ QR Code</p>';
-                            }).catch(err => {
-                                console.error("Camera error:", err);
-                                let errorMessage = 'ไม่สามารถเริ่มต้นกล้องได้';
-                                
-                                if (err.name === 'NotAllowedError') {
-                                    errorMessage = 'กรุณาอนุญาตการเข้าถึงกล้องเพื่อใช้งานฟังก์ชันนี้';
-                                } else if (err.name === 'NotFoundError') {
-                                    errorMessage = 'ไม่พบกล้องในอุปกรณ์ของคุณ';
-                                } else if (err.name === 'NotReadableError') {
-                                    errorMessage = 'ไม่สามารถเข้าถึงกล้องได้ อาจมีแอปพลิเคชันอื่นกำลังใช้งานอยู่';
-                                }
-                                
-                                resultContainer.innerHTML = `
-                                    <p class="error">${errorMessage}</p>
-                                    <button onclick="window.location.reload()" style="margin-top: 10px;">ลองอีกครั้ง</button>
-                                `;
-                            });
-                        }
-                    }
-                    
-                    // Start the scanner when page loads (with a small delay)
-                    document.addEventListener('DOMContentLoaded', () => {
-                        setTimeout(() => {
-                            console.log('Page loaded, starting scanner...');
-                            startScanner();
-                        }, 500);
-                    });
-
-                    stopButton.addEventListener('click', () => {
-                        if (isScanning) {
-                            html5QrCode.stop().then(() => {
-                                isScanning = false;
-                                stopButton.style.display = 'none';
-                                resultContainer.innerHTML = `
-                                    <p>กล้องถูกปิดแล้ว</p>
-                                    <button onclick="startScanner()" style="margin-top: 10px;">เปิดกล้องอีกครั้ง</button>
-                                `;
-                            }).catch(err => {
-                                console.error("Error stopping scanner:", err);
-                                resultContainer.innerHTML = `
-                                    <p class="error">เกิดข้อผิดพลาดในการปิดกล้อง: ${err}</p>
-                                    <button onclick="window.location.reload()" style="margin-top: 10px;">ลองอีกครั้ง</button>
-                                `;
-                            });
-                        }
-                    });
-                </script>
-            </body>
-            </html>
-            """
-            self.wfile.write(html.encode('utf-8'))
-            
-        elif self.path == '/process_scan' and self.server.request_queue is not None:
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                'status': 'success',
-                'message': 'Scan received and processed'
-            }).encode('utf-8'))
-            
-        else:
-            self.send_error(404, "Not Found")
-    
-    def do_OPTIONS(self):
-        """Handle preflight OPTIONS request"""
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-            
-    def do_POST(self):
-        if self.path == '/process_scan':
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                if content_length > 0:
-                    post_data = self.rfile.read(content_length)
-                    data = json.loads(post_data.decode('utf-8'))
-                    
-                    if hasattr(self.server, 'request_queue') and self.server.request_queue:
-                        self.server.request_queue.put(data.get('data', ''))
-                    
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        'status': 'success',
-                        'message': 'Scan processed successfully'
-                    }).encode('utf-8'))
-                else:
-                    self.send_response(400)
-                    self.send_header('Content-type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        'status': 'error',
-                        'message': 'No content'
-                    }).encode('utf-8'))
-                
-            except Exception as e:
-                self.send_response(400)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({
-                    'status': 'error',
-                    'message': str(e)
-                }).encode('utf-8'))
-        else:
-            self.send_error(404, "Not Found")
 
 
-class MobileConnectionServer(QObject):
-    scan_received = pyqtSignal(str)
-    
-    def __init__(self, port=8000):
-        super().__init__()
-        self.port = port
-        self.server = None
-        self.thread = None
-        self.request_queue = None
-    
-    def start(self):
-        def run():
-            server_address = ('', self.port)
-            self.server = HTTPServer(server_address, MobileConnectionHandler)
-            self.server.request_queue = self.request_queue
-            print(f"Starting mobile connection server on port {self.port}")
-            self.server.serve_forever()
-        
-        self.request_queue = queue.Queue()
-        self.thread = threading.Thread(target=run, daemon=True)
-        self.thread.start()
-        
-        self.scan_timer = QTimer()
-        self.scan_timer.timeout.connect(self.process_scan_results)
-        self.scan_timer.start(500)
-    
-    def stop(self):
-        if hasattr(self, 'scan_timer') and self.scan_timer.isActive():
-            self.scan_timer.stop()
-            
-        if self.server:
-            self.server.shutdown()
-            self.server.server_close()
-            self.server = None
-    
-    def process_scan_results(self):
-        if not self.request_queue:
-            return
-            
-        try:
-            while True:
-                scan_data = self.request_queue.get_nowait()
-                print(f"Processing scan data: {scan_data}")
-                self.scan_received.emit(scan_data)
-                
-        except queue.Empty:
-            pass
 
 
 class ScanTab(QWidget):
@@ -376,6 +72,9 @@ class ScanTab(QWidget):
                 self.mobile_server.deleteLater()
             except:
                 pass
+
+
+        
         
         self.mobile_server = MobileConnectionServer()
         self.mobile_server.scan_received.connect(self.on_scan_received)
@@ -409,6 +108,23 @@ class ScanTab(QWidget):
         
         # Add tabs to layout
         layout.addWidget(self.tabs)
+    
+    def add_mobile_record(self, roll):
+        table = self.mobile_table
+        row = table.rowCount()
+        table.insertRow(row)
+
+        table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
+        table.setItem(row, 1, QTableWidgetItem(roll.sku))
+        table.setItem(row, 2, QTableWidgetItem(roll.lot))
+        table.setItem(row, 3, QTableWidgetItem(str(roll.current_length)))
+        table.setItem(row, 4, QTableWidgetItem(roll.location))
+        table.setItem(row, 5, QTableWidgetItem(roll.status))
+
+        # ปุ่ม Action (เช่นเปิดรายละเอียด)
+        btn = QPushButton("Open")
+        btn.clicked.connect(lambda: self.open_roll_detail(roll.roll_id))
+        table.setCellWidget(row, 6, btn)
     
     def create_mobile_tab(self):
         """Create the mobile device scanning tab"""
@@ -664,62 +380,31 @@ class ScanTab(QWidget):
     def on_scan_received(self, scan_data):
         """Handle a QR code scan from a mobile device"""
         try:
-            if isinstance(scan_data, dict):
-                data = scan_data
-            else:
-                try:
-                    data = json.loads(scan_data)
-                    if all(key in data for key in ['roll_id', 'sku', 'lot', 'length']):
-                        pass
-                    else:
-                        roll_data = self.extract_roll_data(scan_data)
-                        if roll_data:
-                            data = roll_data
-                        else:
-                            QMessageBox.warning(
-                                self,
-                                "Invalid Scan",
-                                "The scanned QR code doesn't contain valid roll data."
-                            )
-                            return
-                except json.JSONDecodeError:
-                    roll_data = self.extract_roll_data(scan_data)
-                    if roll_data:
-                        data = roll_data
-                    else:
-                        QMessageBox.warning(
-                            self,
-                            "Invalid Scan",
-                            "The scanned QR code doesn't contain valid roll data."
-                        )
-                        return
-            
-            # Generate Roll ID if not present
-            if 'roll_id' not in data or not data['roll_id']:
-                data['roll_id'] = self.roll_id_generator.generate_roll_id(data.get('sku', 'UNKNOWN'))
-            
-            # Save to database
+            print("--------on_scan_received----------")
+            print(scan_data)
+            datas = scan_data.split("%")
+            print(datas)
+
             roll = Roll(
-                roll_id=data['roll_id'],
-                sku=data.get('sku', ''),
-                lot=data.get('lot', ''),
-                length=float(data.get('length', 0)),
-                width=float(data.get('width', 0)) if data.get('width') else None,
-                grade=data.get('grade', 'A'),
-                location=data.get('location', ''),
-                date_received=data.get('date_received', datetime.now().strftime("%Y-%m-%d")),
-                notes=data.get('notes', '')
+                roll_id=datas[0],
+                sku=datas[1],
+                lot=datas[6],
+                current_length=0.0,
+                original_length=0.0,
+                width=0.0,
+                grade='-',
+                location=datas[7],
+                date_received=datetime.now().strftime("%Y-%m-%d"),
+        
             )
             
             self.storage.add_roll(roll)
-            
-            # Generate label
-            label_img = self.label_generator.create_label(data)
-            
+            self.add_mobile_record(roll)
+           
             QMessageBox.information(
                 self,
                 "Success",
-                f"Roll {data['roll_id']} saved successfully!"
+                f"Roll {1} saved successfully!"
             )
             
             # Emit signal to refresh reports
@@ -756,14 +441,7 @@ class ScanTab(QWidget):
     def show_mobile_connection_qr(self):
         """Show mobile connection QR code"""
         try:
-            import socket
-            import qrcode
-            from io import BytesIO
-            
-            hostname = socket.gethostname()
-            ip_address = socket.gethostbyname(hostname)
-            
-            qr_url = f"http://{ip_address}:8000"
+            qr_url = self.mobile_server.url
             
             # Generate QR code
             qr = qrcode.QRCode(
@@ -796,8 +474,8 @@ class ScanTab(QWidget):
             <p>สแกน QR Code นี้ด้วยกล้องมือถือ</p>
             <p>Scan this QR code with mobile camera:</p>
             <p><b>URL:</b> {qr_url}</p>
-            <p><b>IP Address:</b> {ip_address}</p>
-            <p><b>Port:</b> 8000</p>
+            <p><b>IP Address:</b> {self.mobile_server.local_ip}</p>
+            <p><b>Port:</b> {self.mobile_server.port}</p>
             <p style="color: green;"><b>✓ ระบบพร้อม</b></p>
             """
             

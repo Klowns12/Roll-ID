@@ -470,32 +470,32 @@ class RollsTab(QWidget):
         if not roll:
             QMessageBox.warning(self, "Error", "Selected roll not found!")
             return
-        
+        print("------- role ----")
         print(roll)
         # Convert roll to dict for preview dialog
-        roll_data = {
-            'roll_id': roll.roll_id,
-            'sku': roll.sku,
-            'pdt_code': roll.pdt_code,
-            'lot': roll.lot,
-            'date_received': roll.date_received,
-            'specification': roll.specification,
-            'pdt_name': roll.pdt_name,
-            'product_name': roll.pdt_name,
-            'colour': roll.colour,
-            'packing_unit': roll.packing_unit,
-            'package_unit': roll.packing_unit,
-            'unit_type': roll.unit_type,
-            'grade': roll.grade,
-            'type_of_roll': roll.type_of_roll,
-            'marks_no': roll.marks_no,
-            'current_length': roll.current_length,
-            'width': getattr(roll, 'width', ''),
-            'spl_name': roll.spl_name
-        }
+        # roll_data = {
+        #     'roll_id': roll.roll_id,
+        #     'sku': roll.sku,
+        #     'pdt_code': roll.pdt_code,
+        #     'lot': roll.lot,
+        #     'date_received': roll.date_received,
+        #     'specification': roll.specification,
+        #     'pdt_name': roll.pdt_name,
+        #     'product_name': roll.pdt_name,
+        #     'colour': roll.colour,
+        #     'packing_unit': roll.packing_unit,
+        #     'package_unit': roll.packing_unit,
+        #     'unit_type': roll.unit_type,
+        #     'grade': roll.grade,
+        #     'type_of_roll': roll.type_of_roll,
+        #     'marks_no': roll.marks_no,
+        #     'current_length': roll.current_length,
+        #     'width': getattr(roll, 'width', ''),
+        #     'spl_name': roll.spl_name
+        # }
         
         # Generate and show print preview
-        preview = LabelPreviewDialog(self, roll_data)
+        preview = LabelPreviewDialog(self, roll_data=roll)
         preview.exec()
     
     def export_data(self):

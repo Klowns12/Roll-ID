@@ -20,7 +20,7 @@ class LabelPreviewDialog(QDialog):
         self.roll_data = roll_data
         self.label_image = None
         self.generator = LabelGenerator()  # ใช้ LabelGenerator
-        self.setWindowTitle(f"Label Preview - {roll_data['roll_id']}")
+        self.setWindowTitle(f"Label Preview - {self.roll_data.roll_id}")
         self.setGeometry(100, 100, 800, 600)
         self.setup_ui()
         self.generate_label()
@@ -30,7 +30,7 @@ class LabelPreviewDialog(QDialog):
         layout = QVBoxLayout()
 
         # Title
-        title = QLabel(f"Preview: {self.roll_data['roll_id']}")
+        title = QLabel(f"Preview: {self.roll_data.roll_id}")
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
         
@@ -123,7 +123,7 @@ class LabelPreviewDialog(QDialog):
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
                 "Save Label",
-                f"{self.roll_data['roll_id']}_label.png",
+                f"{self.roll_data.roll_id}_label.png",
                 "PNG Image (*.png);;JPEG Image (*.jpg)"
             )
             

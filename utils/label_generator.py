@@ -39,21 +39,27 @@ class LabelGenerator:
         
         # ใช้ข้อมูลจริง หรือค่า default ถ้าไม่มี
         data = {
-            'roll_id': roll_data.get('roll_id', 'N/A'),
-            'sku': roll_data.get('sku', roll_data.get('pdt_code', '')),
-            'product_name': roll_data.get('product_name', roll_data.get('pdt_name', '')),
-            'lot': roll_data.get('lot', ''),
-            'date_received': roll_data.get('date_received', datetime.now().strftime('%Y-%m-%d')),
-            'specification': roll_data.get('specification', roll_data.get('pdt_code', '')),
-            'colour': roll_data.get('colour', ''),
-            'packing_unit': roll_data.get('packing_unit', roll_data.get('package_unit', '')),
-            'unit_type': roll_data.get('unit_type', 'MTS'),
-            'grade': roll_data.get('grade', 'A'),
-            'type_of_roll': roll_data.get('type_of_roll', ''),
-            'marks_no': roll_data.get('marks_no', ''),
-            'current_length': roll_data.get('current_length', roll_data.get('length', 0)),
-            'width': roll_data.get('width', '')
+            'roll_id': getattr(roll_data,'roll_id',''),
+            'sku': getattr(roll_data,'sku',''),
+            'product_name': getattr(roll_data, 'spl_name', ''),  
+            'lot': getattr(roll_data, 'lot', ''),
+            'date_received': getattr(roll_data, 'date_received', datetime.now().strftime('%Y-%m-%d')),
+            'specification': getattr(roll_data, 'specificattion', getattr(roll_data, 'pdt_code', '')),
+            'colour': getattr(roll_data, 'colour', ''),
+            'packing_unit': getattr(roll_data, 'packing_unit', ''),
+            'unit_type': getattr(roll_data, 'unit_type', 'MTS'),
+            'grade': getattr(roll_data, 'grade', 'A'),
+            'type_of_roll': getattr(roll_data, 'type_of_roll', ''),
+            'marks_no': getattr(roll_data, 'marks_no', ''),
+            'current_length': getattr(roll_data, 'current_length', 0),
+            'width': getattr(roll_data, 'width', ''),
+            'original_length': getattr(roll_data, 'original_length', 0),
+            'location': getattr(roll_data, 'location', ''),
+            'status': getattr(roll_data, 'status', ''),
+            'invoice_number': getattr(roll_data, 'invoice_number', ''),
+            'po_number': getattr(roll_data, 'po_number', '')
         }
+
 
 
         # ขนาดพิกเซล 300 DPI
@@ -68,7 +74,8 @@ class LabelGenerator:
         
 
         # QR Code ต้องเก็บ SKU (Code) ไม่ใช่ Roll ID เพื่อให้ Dispatch tab ค้นหาได้
-        qr_string = data['sku']
+        # qr_string = data['roll_id']
+        qr_string = f"R001%CODE1%SUB_PART_CODE%SUP_CODE%SUPPLIER_NAME%DESCRIPTION%LOT_NO%LOCATION%STATUS"
 
  
 
@@ -83,12 +90,8 @@ class LabelGenerator:
         # ข้อมูลทางขวาของ QR Code
         try:
             font_large = ImageFont.truetype("arialbd.ttf", 34)
-            font_medium = ImageFont.truetype("arial.ttf", 24)
-            font_small = ImageFont.truetype("arial.ttf", 20)
         except:
             font_large = ImageFont.load_default()
-            font_medium = ImageFont.load_default()
-            font_small = ImageFont.load_default()
 
         t_x = 50 
         t_y = 180
