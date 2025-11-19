@@ -37,27 +37,62 @@ class LabelGenerator:
             PIL.Image: รูปฉลากขนาดเล็ก
         """
         
+        is_dict = isinstance(roll_data, dict)
+
+        def _is_empty(value):
+            if value is None:
+                return True
+            if isinstance(value, str):
+                return value.strip() == ""
+            return False
+
+        def _get_value(*keys, default=""):
+            for key in keys:
+                if is_dict and key in roll_data and not _is_empty(roll_data[key]):
+                    return roll_data[key]
+                if hasattr(roll_data, key):
+                    value = getattr(roll_data, key)
+                    if not _is_empty(value):
+                        return value
+            return default
+
+        def _format_number(value):
+            if isinstance(value, (int, float)):
+                return (f"{value:.2f}").rstrip('0').rstrip('.')
+            return str(value)
+
+        length_value = _get_value('length', 'current_length', 'original_length')
+        length_text = ""
+        if not _is_empty(length_value):
+            if isinstance(length_value, (int, float)):
+                length_text = _format_number(length_value)
+                if length_text:
+                    length_text = f"{length_text}m"
+            else:
+                length_text = str(length_value).strip()
+
         # ใช้ข้อมูลจริง หรือค่า default ถ้าไม่มี
         data = {
-            'roll_id': getattr(roll_data,'roll_id',''),
-            'sku': getattr(roll_data,'sku',''),
-            'product_name': getattr(roll_data, 'spl_name', ''),  
-            'lot': getattr(roll_data, 'lot', ''),
-            'date_received': getattr(roll_data, 'date_received', datetime.now().strftime('%Y-%m-%d')),
-            'specification': getattr(roll_data, 'specificattion', getattr(roll_data, 'pdt_code', '')),
-            'colour': getattr(roll_data, 'colour', ''),
-            'packing_unit': getattr(roll_data, 'packing_unit', ''),
-            'unit_type': getattr(roll_data, 'unit_type', 'MTS'),
-            'grade': getattr(roll_data, 'grade', 'A'),
-            'type_of_roll': getattr(roll_data, 'type_of_roll', ''),
-            'marks_no': getattr(roll_data, 'marks_no', ''),
-            'current_length': getattr(roll_data, 'current_length', 0),
-            'width': getattr(roll_data, 'width', ''),
-            'original_length': getattr(roll_data, 'original_length', 0),
-            'location': getattr(roll_data, 'location', ''),
-            'status': getattr(roll_data, 'status', ''),
-            'invoice_number': getattr(roll_data, 'invoice_number', ''),
-            'po_number': getattr(roll_data, 'po_number', '')
+            'roll_id': _get_value('roll_id'),
+            'sku': _get_value('sku', 'code', 'pdt_code'),
+            'product_name': _get_value('product_name', 'pdt_name', 'description', 'spl_name', 'supplier_name'),
+            'lot': _get_value('lot', 'lot_no'),
+            'date_received': _get_value('date_received', default=datetime.now().strftime('%Y-%m-%d')),
+            'specification': _get_value('specification', 'specificattion', 'pdt_code', 'sku', 'code'),
+            'colour': _get_value('colour', 'color'),
+            'packing_unit': _get_value('packing_unit', 'package_unit', 'unit_type'),
+            'unit_type': _get_value('unit_type', default='MTS'),
+            'grade': _get_value('grade', default='A'),
+            'type_of_roll': _get_value('type_of_roll'),
+            'marks_no': _get_value('marks_no'),
+            'current_length': _get_value('current_length'),
+            'width': _get_value('width'),
+            'length': length_text,
+            'original_length': _get_value('original_length'),
+            'location': _get_value('location'),
+            'status': _get_value('status'),
+            'invoice_number': _get_value('invoice_number'),
+            'po_number': _get_value('po_number')
         }
 
 
@@ -123,6 +158,9 @@ class LabelGenerator:
                 fill=self.color_text, font=font_large)
         
         draw.text((t_x, t_y + (t_gap * 5)), f"WIDTH : {data.get('width', '')}", 
+                fill=self.color_text, font=font_large)
+        
+        draw.text((t_x, t_y + (t_gap * 6)), f"LENGTH : {data.get('length', '')}", 
                 fill=self.color_text, font=font_large)
         
 

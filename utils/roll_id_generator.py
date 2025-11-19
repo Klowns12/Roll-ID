@@ -7,7 +7,7 @@ from typing import Optional
 
 
 class RollIDGenerator:
-    """สร้าง Roll ID อัตโนมัติในรูปแบบ R001, R002, R003, ..."""
+    """สร้าง Roll ID อัตโนมัติในรูปแบบ R000001, R000002, ..."""
     
     def __init__(self, data_dir: str):
         self.data_dir = Path(data_dir)
@@ -35,9 +35,9 @@ class RollIDGenerator:
                     except ValueError:
                         pass
             
-            # สร้าง Roll ID ถัดไป
+            # สร้าง Roll ID ถัดไป (6 หลัก)
             next_number = max_number + 1
-            return f"R{next_number:03d}"
+            return f"R{next_number:06d}"
             
         except Exception as e:
             print(f"Error getting next roll ID: {e}")

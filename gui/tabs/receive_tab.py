@@ -119,6 +119,11 @@ class ReceiveTab(QWidget):
         self.manual_width = QLineEdit()
         self.manual_width.setPlaceholderText("e.g., 3.00 m")
         form_layout.addRow("Width:", self.manual_width)
+
+        # Length
+        self.manual_length = QLineEdit()
+        self.manual_length.setPlaceholderText("e.g., 100.00 m")
+        form_layout.addRow("Length:", self.manual_length)
         
         form_group.setLayout(form_layout)
         
@@ -314,6 +319,7 @@ class ReceiveTab(QWidget):
         self.manual_colour.clear()
         self.manual_package_unit.clear()
         self.manual_width.clear()
+        self.manual_length.clear()
         self.manual_date.setDate(QDate.currentDate())
     
     def clear_master_form(self):
@@ -369,6 +375,7 @@ class ReceiveTab(QWidget):
             'packing_unit': self.manual_unit.text().strip() or 'MTS',
             'colour': self.manual_colour.text().strip(),
             'width': self.manual_width.text().strip(),
+            'length': self.manual_length.text().strip(),
             'date_received': self.manual_date.date().toString("yyyy-MM-dd")
         }
         

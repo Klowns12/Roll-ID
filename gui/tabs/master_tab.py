@@ -1,18 +1,39 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
-    QHeaderView, QPushButton, QMessageBox, QFileDialog, QInputDialog,
+    QHeaderView, QPushButton, QMessageBox, QFileDialog,
     QLabel, QLineEdit, QDialog, QDialogButtonBox, QFormLayout
 )
-from PySide6.QtCore import Qt, QSortFilterProxyModel, QRegularExpression
-from PySide6.QtGui import QRegularExpressionValidator
+from PySide6.QtCore import Qt
 import pandas as pd
 import os
-from storage import MasterProduct
 
 class MasterTab(QWidget):
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
+        self.columns = [
+            ("pdt_code", "pdt_code"),
+            ("pdt_name", "pdt_name"),
+            ("unit_type", "unit_type"),
+            ("spl_part_code", "spl_part_code"),
+            ("scrapqty", "scrapqty"),
+            ("create_name", "create_name"),
+            ("create_date", "create_date"),
+            ("update_name", "update_name"),
+            ("update_date", "update_date"),
+            ("last_buy_date", "last_buy_date"),
+            ("lastdate", "lastdate"),
+            ("pg_name", "pg_name"),
+            ("cate_name", "cate_name"),
+            ("spl_name", "spl_name"),
+            ("spl_code", "spl_code"),
+        ]
+        self.column_keys = [key for _, key in self.columns]
+        self.master_df = pd.DataFrame(columns=self.column_keys)
+        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        self.master_data_path = os.path.join(root_dir, "MasterDATA.csv")
+        if not os.path.exists(self.master_data_path):
+            self.master_df.to_csv(self.master_data_path, index=False, encoding='utf-8-sig')
         self.setup_ui()
         self.load_data()
     
@@ -23,7 +44,7 @@ class MasterTab(QWidget):
         # Search bar
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by SKU or description...")
+        self.search_input.setPlaceholderText("Search master data...")
         self.search_input.textChanged.connect(self.filter_table)
         
         search_layout.addWidget(QLabel("Search:"))
@@ -56,11 +77,8 @@ class MasterTab(QWidget):
         
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels([
-            "Code", "Roll ID", "SubPartCode", "SupCode", "Supplier Name", 
-            "Description", "Lot No.", "Location", "Unit"
-        ])
+        self.table.setColumnCount(len(self.columns))
+        self.table.setHorizontalHeaderLabels([label for label, _ in self.columns])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -73,37 +91,85 @@ class MasterTab(QWidget):
         layout.addWidget(self.table)
         
         # Set column widths
-        self.table.setColumnWidth(0, 120)  # Code
-        self.table.setColumnWidth(1, 80)   # Roll ID
-        self.table.setColumnWidth(2, 100)  # SubPartCode
-        self.table.setColumnWidth(3, 100)  # SupCode
-        self.table.setColumnWidth(4, 150)  # Supplier Name
-        self.table.setColumnWidth(5, 200)  # Description
-        self.table.setColumnWidth(6, 80)   # Lot No.
-        self.table.setColumnWidth(7, 100)  # Location
-        self.table.setColumnWidth(8, 80)   # Unit
+        default_widths = {
+            "pdt_code": 140,
+            "pdt_name": 220,
+            "unit_type": 90,
+            "spl_part_code": 120,
+            "scrapqty": 90,
+            "create_name": 140,
+            "create_date": 130,
+            "update_name": 140,
+            "update_date": 130,
+            "last_buy_date": 130,
+            "lastdate": 130,
+            "pg_name": 140,
+            "cate_name": 140,
+            "spl_name": 160,
+            "spl_code": 120,
+        }
+        for idx, (label, _) in enumerate(self.columns):
+            self.table.setColumnWidth(idx, default_widths.get(label, 120))
     
     def load_data(self):
-        """Load master products into the table"""
+        """Load master data from CSV and populate the table"""
+        self.master_df = self._read_master_dataframe()
+        self._refresh_table()
+
+    def _read_master_dataframe(self):
+        """Return normalized dataframe from MasterDATA.csv"""
+        if not os.path.exists(self.master_data_path):
+            QMessageBox.warning(self, "Missing Master Data", f"ไม่พบไฟล์ MasterDATA.csv ที่\n{self.master_data_path}")
+            return pd.DataFrame(columns=self.column_keys)
+
+        try:
+            df = pd.read_csv(self.master_data_path, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            df = pd.read_csv(self.master_data_path, encoding='windows-1252')
+        except Exception as e:
+            QMessageBox.critical(self, "Import Error", f"ไม่สามารถอ่านไฟล์ MasterDATA.csv ได้:\n{e}")
+            return pd.DataFrame(columns=self.column_keys)
+
+        return self._normalize_dataframe(df)
+
+    def _normalize_dataframe(self, df):
+        df = df.copy()
+        df.columns = df.columns.str.strip().str.lower()
+        for key in self.column_keys:
+            if key not in df.columns:
+                df[key] = ""
+        return df[self.column_keys].reset_index(drop=True)
+
+    def _save_master_data(self):
+        try:
+            save_df = self.master_df[self.column_keys].copy()
+            save_df.to_csv(self.master_data_path, index=False, encoding='utf-8-sig')
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"ไม่สามารถบันทึกไฟล์ MasterDATA.csv ได้:\n{e}")
+
+    def _refresh_table(self):
         self.table.setRowCount(0)
-        
-        # Get all master products
-        products = self.storage.get_all_master_products()
-        
-        # Add products to table
-        for product in products:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            
-            self.table.setItem(row, 0, QTableWidgetItem(product.sku or ""))  # Code
-            self.table.setItem(row, 1, QTableWidgetItem(""))  # Roll ID (empty for master)
-            self.table.setItem(row, 2, QTableWidgetItem(""))  # SubPartCode (empty for master)
-            self.table.setItem(row, 3, QTableWidgetItem(""))  # SupCode (empty for master)
-            self.table.setItem(row, 4, QTableWidgetItem(""))  # Supplier Name (empty for master)
-            self.table.setItem(row, 5, QTableWidgetItem(product.description or ""))  # Description
-            self.table.setItem(row, 6, QTableWidgetItem(""))  # Lot No. (empty for master)
-            self.table.setItem(row, 7, QTableWidgetItem(""))  # Location (empty for master)
-            self.table.setItem(row, 8, QTableWidgetItem(f"{product.default_grade or ''}"))  # Unit (use Default Grade)
+        for idx, row in self.master_df.iterrows():
+            table_row = self.table.rowCount()
+            self.table.insertRow(table_row)
+            for col_idx, (_, column_key) in enumerate(self.columns):
+                value = row.get(column_key, "")
+                if pd.isna(value):
+                    value = ""
+                item = QTableWidgetItem(str(value))
+                if col_idx == 0:
+                    item.setData(Qt.ItemDataRole.UserRole, idx)
+                self.table.setItem(table_row, col_idx, item)
+
+    def _get_selected_df_index(self):
+        selected = self.table.selectedItems()
+        if not selected:
+            return None
+        row = selected[0].row()
+        idx_item = self.table.item(row, 0)
+        if not idx_item:
+            return None
+        return idx_item.data(Qt.ItemDataRole.UserRole)
     
     def filter_table(self):
         """Filter the table based on search text"""
@@ -120,96 +186,67 @@ class MasterTab(QWidget):
             self.table.setRowHidden(row, not match)
     
     def add_product(self):
-        """Show add product dialog"""
-        dialog = ProductDialog(self)
+        """Add new master data row"""
+        dialog = MasterDataDialog(self.columns, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            product_data = dialog.get_product_data()
-            
-            # Create new product
-            product = MasterProduct(
-                sku=product_data['sku'],
-                description=product_data['description'],
-                default_length=float(product_data['default_length']),
-                default_grade=product_data['default_grade']
-            )
-            
-            # Add to storage
-            if self.storage.add_master_product(product):
-                self.load_data()
-                QMessageBox.information(self, "Success", "Product added successfully!")
-            else:
-                QMessageBox.warning(self, "Error", "A product with this SKU already exists!")
+            new_record = dialog.get_data()
+            pdt_code = new_record.get('pdt_code', '').strip()
+            if pdt_code and not self.master_df[self.master_df['pdt_code'] == pdt_code].empty:
+                QMessageBox.warning(self, "Duplicate", f"พบ pdt_code ซ้ำ: {pdt_code}")
+                return
+
+            row = {key: new_record.get(key, "") for key in self.column_keys}
+            self.master_df = pd.concat([
+                self.master_df,
+                pd.DataFrame([row])
+            ], ignore_index=True)
+            self.master_df = self.master_df.reset_index(drop=True)
+            self._save_master_data()
+            self._refresh_table()
+            QMessageBox.information(self, "Success", "เพิ่มข้อมูลสำเร็จ")
     
     def edit_product(self):
         """Edit selected product"""
-        selected = self.table.selectedItems()
-        if not selected:
+        df_index = self._get_selected_df_index()
+        if df_index is None:
             QMessageBox.warning(self, "No Selection", "Please select a product to edit.")
             return
-        
-        row = selected[0].row()
-        sku = self.table.item(row, 0).text()
-        
-        # Get current product data
-        product = self.storage.get_master_product(sku)
-        if not product:
-            QMessageBox.warning(self, "Error", "Selected product not found!")
-            return
-        
-        # Show edit dialog
-        dialog = ProductDialog(self, edit_mode=True)
-        dialog.set_product_data({
-            'sku': product.sku,
-            'description': product.description,
-            'default_length': str(product.default_length),
-            'default_grade': product.default_grade
-        })
-        
+        current_data = self.master_df.loc[df_index, self.column_keys].to_dict()
+        dialog = MasterDataDialog(self.columns, parent=self, data=current_data, edit_mode=True)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            product_data = dialog.get_product_data()
-            
-            # Update product (in a real app, you would have an update method in storage)
-            # For now, we'll delete and re-add
-            # In a real implementation, you should have an update_master_product method
-            
-            # This is a workaround since we don't have an update method
-            # In a real app, you would call storage.update_master_product()
-            
-            # For now, we'll just show a message
-            QMessageBox.information(
-                self,
-                "Edit Product",
-                f"In a full implementation, the product {product_data['sku']} would be updated here."
-            )
+            updated_record = dialog.get_data()
+            new_code = updated_record.get('pdt_code', '').strip()
+            if new_code != current_data.get('pdt_code') and not self.master_df[self.master_df['pdt_code'] == new_code].empty:
+                QMessageBox.warning(self, "Duplicate", f"พบ pdt_code ซ้ำ: {new_code}")
+                return
+
+            for key in self.column_keys:
+                self.master_df.at[df_index, key] = updated_record.get(key, "")
+            self.master_df = self.master_df.reset_index(drop=True)
+            self._save_master_data()
+            self._refresh_table()
+            QMessageBox.information(self, "Success", "แก้ไขข้อมูลสำเร็จ")
     
     def delete_product(self):
         """Delete selected product"""
-        selected = self.table.selectedItems()
-        if not selected:
+        df_index = self._get_selected_df_index()
+        if df_index is None:
             QMessageBox.warning(self, "No Selection", "Please select a product to delete.")
             return
-        
-        row = selected[0].row()
-        sku = self.table.item(row, 0).text()
-        
-        # Confirm deletion
+        pdt_code = self.master_df.at[df_index, 'pdt_code'] if df_index < len(self.master_df) else ""
         reply = QMessageBox.question(
             self,
             'Confirm Deletion',
-            f'Are you sure you want to delete product {sku}?',
+            f'แน่ใจหรือไม่ว่าจะลบข้อมูล {pdt_code}?',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            # In a real app, you would call storage.delete_master_product(sku)
-            # For now, we'll just show a message
-            QMessageBox.information(
-                self,
-                "Delete Product",
-                f"In a full implementation, the product {sku} would be deleted here."
-            )
-            # self.load_data()  # Refresh the table
+            self.master_df = self.master_df.drop(df_index).reset_index(drop=True)
+            self._save_master_data()
+            self._refresh_table()
+            QMessageBox.information(self, "Success", "ลบข้อมูลสำเร็จ")
     
     def import_from_file(self):
         """Import products from CSV or Excel file"""
@@ -228,86 +265,13 @@ class MasterTab(QWidget):
                 df = pd.read_excel(file_path)
             else:
                 df = pd.read_csv(file_path)
-            
-            # Normalize column names (lowercase, strip whitespace)
-            df.columns = df.columns.str.lower().str.strip()
-            
-            # Map column names (support multiple naming conventions)
-            column_mapping = {
-                'pdt_code': 'sku',
-                'pdt_name': 'description1',
-                'pdt_name_en': 'description2',
-                'unit_cost': 'default_length',
-                'pdt_color': 'color',
-                'pdt_size': 'size',
-                'location': 'location'
-            }
-            
-            # Rename columns based on mapping
-            df = df.rename(columns=column_mapping)
-            
-            # Check required columns
-            required_columns = ['sku', 'description1']
-            available_columns = df.columns.tolist()
-            missing_columns = [col for col in required_columns if col not in available_columns]
-            
-            if missing_columns:
-                QMessageBox.critical(
-                    self,
-                    "Import Error",
-                    f"Missing required columns: {', '.join(missing_columns)}\n\n"
-                    f"Required: sku (or pdt_code), description (or pdt_name)\n"
-                    f"Optional: default_length (or unit_cost), default_grade"
-                )
-                return
-            
-            # Process each row
-            success_count = 0
-            error_count = 0
-            
-            for idx, row in df.iterrows():
-                try:
-                    sku = str(row['sku']).strip()
-            
-                    description = str(row['description1']).strip()
-                    # Use default_length if available, otherwise use unit_cost
-                    default_length = -1
-                    default_grade = "-"
-                    
-                    # Skip if SKU is empty
-                    if not sku:
-                        error_count += 1
-                        continue
-                    
-                
-                    # Create product
-                    product = MasterProduct(
-                        sku=sku,
-                        description=description,
-                        default_length=default_length,
-                        default_grade=default_grade
-                    )
-                    
-                    # Add to storage
-                    if self.storage.add_master_product(product):
-                        success_count += 1
-                    else:
-                        error_count += 1
-                
-                except Exception as e:
-                    error_count += 1
-                    print(f"Error importing row {idx}: {str(e)}")
-            
-            # Show results
-            msg = f"Import complete!\n\n" \
-                  f"Successfully imported: {success_count}\n" \
-                  f"Failed: {error_count}"
-            
-            QMessageBox.information(self, "Import Results", msg)
-            
-            # Refresh the table
-            self.load_data()
-            
+
+            df = self._normalize_dataframe(df)
+            self.master_df = df
+            self._save_master_data()
+            self._refresh_table()
+            QMessageBox.information(self, "Import Results", "นำเข้าข้อมูลสำเร็จ")
+
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -328,30 +292,14 @@ class MasterTab(QWidget):
             return  # User cancelled
         
         try:
-            # Get all products
-            products = self.storage.get_all_master_products()
-            
-            # Convert to DataFrame
-            data = []
-            for product in products:
-                data.append({
-                    'sku': product.sku,
-                    'description': product.description,
-                    'default_length': product.default_length,
-                    'default_grade': product.default_grade
-                })
-            
-            df = pd.DataFrame(data)
-            
-            # Save to CSV with utf-8-sig encoding (รองรับภาษาไทย)
-            df.to_csv(file_path, index=False, encoding='utf-8-sig')
-            
+            export_df = self.master_df[self.column_keys].copy()
+            export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
             QMessageBox.information(
                 self,
                 "Export Successful",
-                f"Successfully exported {len(products)} products to:\n{file_path}"
+                f"Successfully exported {len(export_df)} rows to:\n{file_path}"
             )
-            
+
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -360,100 +308,54 @@ class MasterTab(QWidget):
             )
 
 
-class ProductDialog(QDialog):
-    """Dialog for adding/editing products"""
-    def __init__(self, parent=None, edit_mode=False):
+class MasterDataDialog(QDialog):
+    def __init__(self, columns, parent=None, data=None, edit_mode=False):
         super().__init__(parent)
+        self.columns = columns
+        self.data = data or {}
         self.edit_mode = edit_mode
+        self.inputs = {}
+        self.required_fields = {"pdt_code", "pdt_name"}
         self.setup_ui()
-    
+
     def setup_ui(self):
-        """Set up the dialog UI"""
-        self.setWindowTitle("Add New Product" if not self.edit_mode else "Edit Product")
-        self.setMinimumWidth(400)
-        
+        self.setWindowTitle("Edit Master Data" if self.edit_mode else "Add Master Data")
+        self.setMinimumWidth(450)
+
         layout = QVBoxLayout(self)
         form_layout = QFormLayout()
-        
-        # SKU
-        self.sku_input = QLineEdit()
-        self.sku_input.setPlaceholderText("e.g., FAB-001")
-        
-        # Description
-        self.desc_input = QLineEdit()
-        self.desc_input.setPlaceholderText("e.g., Cotton Fabric - Blue")
-        
-        # Default Length
-        self.length_input = QLineEdit()
-        self.length_input.setPlaceholderText("e.g., 100.0")
-        
-        # Only allow numbers and decimal point
-        float_validator = QRegularExpressionValidator(QRegularExpression(r"^\d*\.?\d+$"))
-        self.length_input.setValidator(float_validator)
-        
-        # Default Grade
-        self.grade_input = QLineEdit()
-        self.grade_input.setPlaceholderText("e.g., A")
-        self.grade_input.setMaxLength(1)
-        
-        # Add fields to form
-        form_layout.addRow("SKU*:", self.sku_input)
-        form_layout.addRow("Description*:", self.desc_input)
-        form_layout.addRow("Default Length (m)*:", self.length_input)
-        form_layout.addRow("Default Grade:", self.grade_input)
-        
-        # Buttons
+
+        for label, key in self.columns:
+            input_field = QLineEdit()
+            input_field.setText(str(self.data.get(key, "")))
+            nice_label = label.replace('_', ' ').title()
+            if key in self.required_fields:
+                nice_label = f"{nice_label}*"
+            form_layout.addRow(f"{nice_label}:", input_field)
+            self.inputs[key] = input_field
+
         button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Ok |
             QDialogButtonBox.StandardButton.Cancel
         )
         button_box.accepted.connect(self.validate_and_accept)
         button_box.rejected.connect(self.reject)
-        
-        # Add to main layout
+
         layout.addLayout(form_layout)
         layout.addWidget(QLabel("* Required fields"))
         layout.addWidget(button_box)
-        
-        # Disable SKU field in edit mode
+
         if self.edit_mode:
-            self.sku_input.setReadOnly(True)
-    
-    def set_product_data(self, data):
-        """Set the form fields with product data"""
-        self.sku_input.setText(data.get('sku', ''))
-        self.desc_input.setText(data.get('description', ''))
-        self.length_input.setText(str(data.get('default_length', '')))
-        self.grade_input.setText(data.get('default_grade', 'A'))
-    
-    def get_product_data(self):
-        """Get the product data from form fields"""
-        return {
-            'sku': self.sku_input.text().strip(),
-            'description': self.desc_input.text().strip(),
-            'default_length': self.length_input.text().strip() or '0',
-            'default_grade': self.grade_input.text().strip() or 'A'
-        }
-    
+            self.inputs['pdt_code'].setReadOnly(False)
+
+    def get_data(self):
+        return {key: field.text().strip() for key, field in self.inputs.items()}
+
     def validate_and_accept(self):
-        """Validate the form before accepting"""
-        data = self.get_product_data()
-        
-        # Validate required fields
-        if not data['sku']:
-            QMessageBox.warning(self, "Validation Error", "SKU is required!")
-            self.sku_input.setFocus()
-            return
-        
-        if not data['description']:
-            QMessageBox.warning(self, "Validation Error", "Description is required!")
-            self.desc_input.setFocus()
-            return
-        
-        if not data['default_length'] or float(data['default_length']) <= 0:
-            QMessageBox.warning(self, "Validation Error", "Please enter a valid length greater than 0!")
-            self.length_input.setFocus()
-            return
-        
-        # If we got here, all validations passed
+        data = self.get_data()
+        for key in self.required_fields:
+            if not data.get(key):
+                QMessageBox.warning(self, "Validation Error", f"{key} is required")
+                self.inputs[key].setFocus()
+                return
         self.accept()

@@ -97,69 +97,16 @@ class ScanTab(QWidget):
         self.tabs = QTabWidget()
         
         # Create tabs
-        self.mobile_tab = self.create_mobile_tab()
         self.device_tab = self.create_device_tab()
         self.master_tab = self.create_master_tab()
         
         # Add tabs
-        self.tabs.addTab(self.mobile_tab, "Scan Mobile Device")
         self.tabs.addTab(self.device_tab, "Scan Device")
         self.tabs.addTab(self.master_tab, "Scan from Master")
         
         # Add tabs to layout
         layout.addWidget(self.tabs)
     
-    def add_mobile_record(self, roll):
-        table = self.mobile_table
-        row = table.rowCount()
-        table.insertRow(row)
-
-        table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
-        table.setItem(row, 1, QTableWidgetItem(roll.sku))
-        table.setItem(row, 2, QTableWidgetItem(roll.lot))
-        table.setItem(row, 3, QTableWidgetItem(str(roll.current_length)))
-        table.setItem(row, 4, QTableWidgetItem(roll.location))
-        table.setItem(row, 5, QTableWidgetItem(roll.status))
-
-        # ปุ่ม Action (เช่นเปิดรายละเอียด)
-        btn = QPushButton("Open")
-        btn.clicked.connect(lambda: self.open_roll_detail(roll.roll_id))
-        table.setCellWidget(row, 6, btn)
-    
-    def create_mobile_tab(self):
-        """Create the mobile device scanning tab"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # Instructions
-        instructions = QLabel(
-            "Scan rolls using a mobile device connected to the same network.\n\n"
-            "1. Click 'Connect Mobile Device' to get the connection QR code\n"
-            "2. Scan the QR code with your mobile device\n"
-            "3. Use the mobile interface to scan roll QR codes\n"
-            "4. Scanned data will appear below"
-        )
-        instructions.setWordWrap(True)
-        
-        # Connect button
-        connect_btn = QPushButton("Connect Mobile Device")
-        connect_btn.clicked.connect(self.show_mobile_connection_qr)
-        
-        # Scanned data table
-        self.mobile_table = QTableWidget()
-        self.mobile_table.setColumnCount(7)
-        self.mobile_table.setHorizontalHeaderLabels([
-            "Roll ID", "SKU", "Lot", "Length", "Location", "Status", "Action"
-        ])
-        self.mobile_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.mobile_table.verticalHeader().setVisible(False)
-        
-        # Add to layout
-        layout.addWidget(instructions)
-        layout.addWidget(connect_btn)
-        layout.addWidget(self.mobile_table)
-        
-        return tab
     
     def create_device_tab(self):
         """Create the device scanning tab"""
