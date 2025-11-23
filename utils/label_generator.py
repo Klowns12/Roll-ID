@@ -110,7 +110,7 @@ class LabelGenerator:
 
         # QR Code ต้องเก็บ SKU (Code) ไม่ใช่ Roll ID เพื่อให้ Dispatch tab ค้นหาได้
         # qr_string = data['roll_id']
-        qr_string = f"R001%CODE1%SUB_PART_CODE%SUP_CODE%SUPPLIER_NAME%DESCRIPTION%LOT_NO%LOCATION%STATUS"
+        qr_string = f"{data['sku']}"
 
  
 

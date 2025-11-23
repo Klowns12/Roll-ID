@@ -31,7 +31,7 @@ class FabricRollApp(QApplication):
         
         # Set application icon
         try:
-            icon_path = os.path.join(os.path.dirname(__file__), "fabric.png")
+            icon_path = os.path.join(os.path.dirname(__file__),"assets", "fabric.png")
             if os.path.exists(icon_path):
                 # Note: setApplicationIcon is not available in PySide6, icon will be set on main window
                 logger.info(f"Application icon path: {icon_path}")

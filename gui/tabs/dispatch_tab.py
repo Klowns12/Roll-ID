@@ -10,7 +10,7 @@ from io import BytesIO
 import socket
 import qrcode
 
-from utils.mobile_scan_service.mobile_connection_server import MobileConnectionServer
+from utils.mobile_connection_server import MobileConnectionServer
 
 class DispatchQuantityDialog(QDialog):
     """Dialog สำหรับกรอกจำนวนที่ต้องการเบิกออก"""
@@ -25,6 +25,8 @@ class DispatchQuantityDialog(QDialog):
         self.width = width
         self.dispatch_width = ""
         self.setup_ui()
+
+        self.mobile_qr_dialog = None
     
     def setup_ui(self):
         self.setWindowTitle("เบิกออก - Dispatch")
@@ -225,6 +227,7 @@ class DispatchTab(QWidget):
             except Exception:
                 pass
         self.mobile_server = MobileConnectionServer()
+        self.mobile_server.client_opened.connect(self.on_mobile_scan)
         self.mobile_server.scan_received.connect(self.on_mobile_scan_received)
         self.mobile_server.start()
 
@@ -246,6 +249,7 @@ class DispatchTab(QWidget):
             qr_img = qr.make_image(fill_color="black", back_color="white")
 
             dialog = QDialog(self)
+            self.mobile_qr_dialog = dialog
             dialog.setWindowTitle("Connect Mobile Device")
             dialog.setMinimumSize(400, 500)
 
@@ -289,40 +293,35 @@ class DispatchTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error showing QR code: {str(e)}")
 
+    def on_mobile_scan(self):
+        print("client opening")
+        self.mobile_qr_dialog.accept()
+        
     def on_mobile_scan_received(self, scan_data):
         try:
-            # push scanned roll id into input for quick dispatch
-            if isinstance(scan_data, str):
-                parts = scan_data.split('%')
-                if parts:
-                    self.roll_id_input.setText(parts[0])
-                    self.process_scan()
+            print(f"recieve : {scan_data}")
+    
+
+            self.dispatch(scan_data)
         except Exception as e:
             print(f"Error handling mobile scan: {e}")
     
-    def process_scan(self):
-        """ประมวลผลการสแกน"""
-        scan_input = self.roll_id_input.text().strip()
-        
-        if not scan_input:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกเลขม้วนหรือสแกน QR Code")
-            return
-        
+    def dispatch(self,code):
         # ตรวจสอบว่ามีม้วนนี้ในระบบหรือไม่
         # ลองค้นหาจาก Roll ID ก่อน (เช่น R001)
-        roll = self.storage.get_roll_by_id(scan_input)
+        roll = self.storage.get_roll_by_id(code)
         
         # ถ้าไม่เจอ ลองค้นหาจาก Code (เช่น RM2061506007)
         if not roll:
-            roll = self.storage.get_roll_by_code(scan_input)
+            roll = self.storage.get_roll_by_code(code)
         
         if not roll:
-            self.status_label.setText(f"❌ ไม่พบม้วนเลข {scan_input} ในระบบ")
+            self.status_label.setText(f"❌ ไม่พบม้วนเลข {code} ในระบบ")
             self.status_label.setStyleSheet("padding: 10px; background-color: #ffebee; border-radius: 5px; color: red;")
             QMessageBox.warning(
                 self,
                 "ไม่พบข้อมูล",
-                f"ไม่พบม้วนเลข {scan_input} ในระบบ\n\nกรุณาตรวจสอบเลขม้วนหรือรับเข้าก่อน"
+                f"ไม่พบม้วนเลข {code} ในระบบ\n\nกรุณาตรวจสอบเลขม้วนหรือรับเข้าก่อน"
             )
             return
         
@@ -352,6 +351,18 @@ class DispatchTab(QWidget):
             dispatch_width = dialog.get_dispatch_width()
             dispatch_length = dialog.get_dispatch_length()
             self.dispatch_roll(roll, dispatch_width, dispatch_length)
+    
+    def process_scan(self):
+        """ประมวลผลการสแกน"""
+        scan_input = self.roll_id_input.text().strip()
+        
+        if not scan_input:
+            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกเลขม้วนหรือสแกน QR Code")
+            return
+        
+        self.dispatch(scan_input)
+        
+        
     
     def dispatch_roll(self, roll, dispatch_width, dispatch_length):
         """เบิกออกม้วนผ้า"""

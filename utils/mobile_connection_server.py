@@ -17,12 +17,18 @@ class MobileConnectionHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
+
+            # ============ EVENT: ผู้ใช้เปิดหน้าเว็บ ============
+            if hasattr(self.server, "client_open_queue"):
+                self.server.client_open_queue.put("OPEN")
+            # ====================================================
+
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
 
-            html_path = os.path.join(os.getcwd(),"utils","mobile_scan_service", "mobile_scan.html")
+            html_path = os.path.join(os.getcwd(), "utils", "mobile_scan.html")
             with open(html_path, "r", encoding="utf-8") as f:
                 html = f.read()
 
@@ -71,22 +77,22 @@ class MobileConnectionHandler(BaseHTTPRequestHandler):
 
 class MobileConnectionServer(QObject):
     scan_received = pyqtSignal(str)
+    client_opened = pyqtSignal()   # EVENT ใหม่
 
     def __init__(self, port=8000):
         super().__init__()
 
         self._find_cert_files()
-        
+
         hostname = socket.gethostname()
         self.local_ip = socket.gethostbyname(hostname)
         self.port = port
         self.server = None
         self.thread = None
         self.request_queue = None
+        self.client_open_queue = None
 
         self.url = f"https://{self.local_ip}:{self.port}"
-
-     
 
         cert_folder = "cert"
         os.makedirs(cert_folder, exist_ok=True)
@@ -105,7 +111,7 @@ class MobileConnectionServer(QObject):
         print(result.stderr)
 
     def _find_cert_files(self):
-        cert_folder=os.path.join(os.getcwd(), "cert")
+        cert_folder = os.path.join(os.getcwd(), "cert")
 
         pem_files = glob.glob(os.path.join(cert_folder, "*.pem"))
         cert_files = [f for f in pem_files if not f.endswith("-key.pem")]
@@ -121,15 +127,17 @@ class MobileConnectionServer(QObject):
         else:
             print(f"ไม่พบไฟล์คีย์ (-key.pem) ในโฟลเดอร์: {cert_folder}")
 
-        if self.cert_file and self.key_file:
+        if hasattr(self, "cert_file") and hasattr(self, "key_file"):
             print(f"พบไฟล์ใบรับรอง: {os.path.basename(self.cert_file)}")
             print(f"พบไฟล์คีย์: {os.path.basename(self.key_file)}")
 
     def start(self):
+
         def run():
             print(">> Creating HTTPServer...")
             httpd = HTTPServer(("", self.port), MobileConnectionHandler)
             httpd.request_queue = self.request_queue
+            httpd.client_open_queue = self.client_open_queue
 
             print(">> Creating SSLContext...")
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -142,6 +150,8 @@ class MobileConnectionServer(QObject):
             httpd.serve_forever()
 
         self.request_queue = queue.Queue()
+        self.client_open_queue = queue.Queue()  # ใหม่
+
         self.thread = threading.Thread(target=run, daemon=True)
         self.thread.start()
 
@@ -158,13 +168,23 @@ class MobileConnectionServer(QObject):
             self.server = None
 
     def process_queue(self):
-        if not self.request_queue:
-            return
-        try:
-            while True:
-                value = self.request_queue.get_nowait()
-                print("SCAN =", value)
-                self.scan_received.emit(value)
-        except queue.Empty:
-            pass
 
+        # -------- Event: รับค่าที่สแกน -----------
+        if self.request_queue:
+            try:
+                while True:
+                    value = self.request_queue.get_nowait()
+                    print("SCAN =", value)
+                    self.scan_received.emit(value)
+            except queue.Empty:
+                pass
+
+        # -------- Event: ผู้ใช้เปิดเว็บ -----------
+        if self.client_open_queue:
+            try:
+                while True:
+                    _ = self.client_open_queue.get_nowait()
+                    print("CLIENT OPENED")
+                    self.client_opened.emit()
+            except queue.Empty:
+                pass

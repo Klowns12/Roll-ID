@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roll Scanner</title>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <style>
+        body { font-family: Arial; padding: 20px; text-align: center; }
+        #reader { width: 100%; max-width: 400px; margin: auto; display: none; }
+        .success { background: #dff0d8; padding: 10px; margin-top: 10px; }
+        .error { background: #f2dede; padding: 10px; margin-top: 10px; }
+        button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Roll Scanner</h2>
+
+    <button id="startScanBtn">Start Scan</button>
+
+    <div id="reader"></div>
+    <div id="result"></div>
+
+    <script>
+        const qr = new Html5Qrcode("reader");
+        const startBtn = document.getElementById("startScanBtn");
+        const readerBox = document.getElementById("reader");
+        const resultBox = document.getElementById("result");
+
+        // ============= ฟังก์ชัน RESET หน้าเว็บ =============
+        function resetUI() {
+            resultBox.innerHTML = "";              // ล้างผลลัพธ์
+            readerBox.style.display = "none";       // ซ่อนกล้อง
+            startBtn.style.display = "inline-block"; // แสดงปุ่มเริ่มใหม่
+        }
+
+        // ============= เริ่มการสแกน =============
+        startBtn.addEventListener("click", () => {
+
+            resetUI();
+            startBtn.style.display = "none";   // ซ่อนปุ่ม
+            readerBox.style.display = "block"; // แสดงกล้อง
+
+            qr.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+
+                async (text, result) => {
+                    resultBox.innerHTML = "<div class='success'>Scanned: " + text + "</div>";
+
+                    try {
+                        const res = await fetch("/process_scan", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ data: text })
+                        });
+
+                        const js = await res.json();
+
+                        resultBox.innerHTML += "<div class='success'>Processed</div>";
+
+                    } catch (err) {
+                        resultBox.innerHTML += "<div class='error'>ERR: " + err + "</div>";
+                    }
+
+                    // ============= Clear ทุกอย่างหลังสแกน =============
+                    await qr.stop();     // หยุดกล้อง
+                    resetUI();           // คืนสู่สภาพเริ่มต้น
+                }
+
+            ).catch(err => {
+                resultBox.innerHTML = "<div class='error'>Camera error: " + err + "</div>";
+                resetUI();
+            });
+        });
+    </script>
+
+</body>
+</html>

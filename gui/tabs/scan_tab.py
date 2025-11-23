@@ -21,7 +21,6 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import sys
 import pandas as pd
 
-from utils.mobile_scan_service.mobile_connection_server import MobileConnectionServer
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -42,53 +41,21 @@ class ScanTab(QWidget):
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
-        self.mobile_server = None
         self.label_generator = LabelGenerator()
         
         # Initialize Roll ID Generator
         data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
         self.roll_id_generator = RollIDGenerator(data_dir)
         
-        # Initialize Master Suppliers Manager
-        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        master_data_path = os.path.join(root_dir, "MasterDATA.csv")
-        suppliers_path = os.path.join(root_dir, "Suppliers.csv")
-        dispatch_path = os.path.join(root_dir, "Master_Dispatch.csv")
-        db_path = os.path.join(root_dir, "data", "storage.db")
-        self.suppliers_manager = MasterSuppliersManager(master_data_path, suppliers_path, dispatch_path, db_path)
+   
+        self.suppliers_manager = MasterSuppliersManager()
         
         self.setup_ui()
         
         # Connect signals
         self.scan_received.connect(self.on_scan_received)
         
-        # Initialize mobile server
-        self.init_mobile_server()
-    
-    def init_mobile_server(self):
-        if self.mobile_server:
-            try:
-                self.mobile_server.stop()
-                self.mobile_server.deleteLater()
-            except:
-                pass
 
-
-        
-        
-        self.mobile_server = MobileConnectionServer()
-        self.mobile_server.scan_received.connect(self.on_scan_received)
-        self.mobile_server.start()
-    
-    def closeEvent(self, event):
-        if self.mobile_server:
-            try:
-                self.mobile_server.stop()
-                self.mobile_server.deleteLater()
-            except:
-                pass
-        super().closeEvent(event)
-    
     def setup_ui(self):
         """Set up the Scan QR tab UI"""
         layout = QVBoxLayout(self)
@@ -384,80 +351,6 @@ class ScanTab(QWidget):
             'grade': 'A',
             'date_received': datetime.now().strftime("%Y-%m-%d")
         }
-    
-    def show_mobile_connection_qr(self):
-        """Show mobile connection QR code"""
-        try:
-            qr_url = self.mobile_server.url
-            
-            # Generate QR code
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(qr_url)
-            qr.make(fit=True)
-            
-            # Create image
-            qr_img = qr.make_image(fill_color="black", back_color="white")
-            
-            # Create dialog
-            from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton
-            from PySide6.QtGui import QPixmap
-            from PySide6.QtCore import Qt
-            
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Connect Mobile Device")
-            dialog.setMinimumSize(400, 500)
-            
-            # Create layout
-            layout = QVBoxLayout()
-            
-            # Add connection info
-            info_text = f"""
-            <h3>เชื่อมต่อมือถือ / Connect Mobile Device</h3>
-            <p>สแกน QR Code นี้ด้วยกล้องมือถือ</p>
-            <p>Scan this QR code with mobile camera:</p>
-            <p><b>URL:</b> {qr_url}</p>
-            <p><b>IP Address:</b> {self.mobile_server.local_ip}</p>
-            <p><b>Port:</b> {self.mobile_server.port}</p>
-            <p style="color: green;"><b>✓ ระบบพร้อม</b></p>
-            """
-            
-            info_label = QLabel(info_text)
-            info_label.setTextFormat(Qt.TextFormat.RichText)
-            info_label.setWordWrap(True)
-            layout.addWidget(info_label)
-            
-            # Convert QR code to pixmap
-            buffer = BytesIO()
-            qr_img.save(buffer, format="PNG")
-            pixmap = QPixmap()
-            pixmap.loadFromData(buffer.getvalue())
-            
-            # Add QR code to label
-            qr_label = QLabel()
-            qr_label.setPixmap(pixmap)
-            qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(qr_label)
-            
-            # Add buttons
-            btn_layout = QHBoxLayout()
-            
-            close_btn = QPushButton("Close")
-            close_btn.clicked.connect(dialog.accept)
-            
-            btn_layout.addStretch()
-            btn_layout.addWidget(close_btn)
-            
-            layout.addLayout(btn_layout)
-            dialog.setLayout(layout)
-            dialog.exec()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error showing QR code: {str(e)}")
     
     def check_device_connection(self):
         """ตรวจสอบสถานะการเชื่อมต่อเครื่องสแกน / Check scanner device connection status"""

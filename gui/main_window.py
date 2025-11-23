@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         # Set window icon
         try:
             # Try to load icon from fabric.png in the root directory
-            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "fabric.png")
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),"assets", "fabric.png")
             if os.path.exists(icon_path):
                 self.setWindowIcon(QIcon(icon_path))
             else:

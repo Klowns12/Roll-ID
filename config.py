@@ -64,7 +64,10 @@ class Config:
             config_file: Path to a custom configuration file. If not provided,
                         looks for 'config.json' in the application directory.
         """
-        self.config_file = config_file or os.path.join(os.path.dirname(__file__), 'config.json')
+        os.getcwd()
+        self.config_file = config_file or os.path.join(os.path.dirname(__file__),"data", 'config.json')
+        print("-----config-----")
+        print(self.config_file)
         self._config = self._load_config()
         self._ensure_directories()
     

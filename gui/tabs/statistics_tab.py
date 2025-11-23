@@ -11,21 +11,22 @@ from PySide6.QtCharts import (
 )
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from utils.master_suppliers_manager import MasterSuppliersManager
 
 class StatisticsTab(QWidget):
+
+    
+
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
         
         # Initialize master suppliers manager
-        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        master_data_path = os.path.join(root_dir, "MasterDATA.csv")
-        suppliers_path = os.path.join(root_dir, "Suppliers.csv")
-        dispatch_path = os.path.join(root_dir, "Master_Dispatch.csv")
-        db_path = os.path.join(root_dir, "data", "storage.db")
-        self.suppliers_manager = MasterSuppliersManager(master_data_path, suppliers_path, dispatch_path, db_path)
+        root_dir = os.getcwd()
+
+        
+        self.suppliers_manager = MasterSuppliersManager()
         
         self.setup_ui()
         self.load_data()
@@ -161,14 +162,8 @@ class StatisticsTab(QWidget):
     
     def load_data(self):
         """Load and display statistics data"""
-        try:
-            # Reload suppliers manager to get latest data from storage.db
-            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            master_data_path = os.path.join(root_dir, "MasterDATA.csv")
-            suppliers_path = os.path.join(root_dir, "Suppliers.csv")
-            dispatch_path = os.path.join(root_dir, "Master_Dispatch.csv")
-            db_path = os.path.join(root_dir, "data", "storage.db")
-            self.suppliers_manager = MasterSuppliersManager(master_data_path, suppliers_path, dispatch_path, db_path)
+        try:    
+            self.suppliers_manager = MasterSuppliersManager()
             
             # Get all suppliers data
             self.display_suppliers_data()

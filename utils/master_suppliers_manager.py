@@ -5,16 +5,24 @@ import pandas as pd
 from pathlib import Path
 from typing import List, Dict, Optional
 import sqlite3
-
+import os
 
 class MasterSuppliersManager:
     """จัดการข้อมูล Suppliers จากไฟล์ MasterDATA.csv, Suppliers.csv, Master_Dispatch.csv และ storage.db"""
-    
-    def __init__(self, master_data_path: str, suppliers_path: str, dispatch_path: str = None, db_path: str = None):
-        self.master_data_path = Path(master_data_path)
-        self.suppliers_path = Path(suppliers_path)
-        self.dispatch_path = Path(dispatch_path) if dispatch_path else None
-        self.db_path = Path(db_path) if db_path else None
+
+    master_data_path = os.path.join(os.getcwd(),"data", "MasterDATA.csv")
+    suppliers_path = os.path.join(os.getcwd(),"data", "Suppliers.csv")
+    dispatch_path = os.path.join(os.getcwd(),"data", "MasterDispatch.csv")
+    db_path = os.path.join(os.getcwd(), "data", "storage.db")
+
+
+    def __init__(self):
+        print("------------- init master suppliers manager ---------")
+        print(self.master_data_path)
+        print(self.suppliers_path)
+        print(self.dispatch_path)
+        print(self.db_path)
+
         self.master_data = None
         self.suppliers_data = None
         self.dispatch_data = None
@@ -26,12 +34,12 @@ class MasterSuppliersManager:
         """โหลดข้อมูลจากไฟล์ทั้งหมด"""
         try:
             # โหลด MasterDATA.csv
-            if self.master_data_path.exists():
+            if os.path.exists(self.master_data_path):
                 self.master_data = pd.read_csv(self.master_data_path, encoding='utf-8')
                 print(f"Loaded {len(self.master_data)} rows from MasterDATA.csv")
             
             # โหลด Suppliers.csv
-            if self.suppliers_path.exists():
+            if os.path.exists(self.suppliers_path):
                 self.suppliers_data = pd.read_csv(self.suppliers_path, encoding='utf-8')
                 # ลบแถวที่มี 'Item' หรือ 'Suppliers' ในคอลัมน์แรก หรือ NaN
                 self.suppliers_data = self.suppliers_data[
@@ -46,12 +54,12 @@ class MasterSuppliersManager:
                 print(f"Loaded {len(self.suppliers_data)} rows from Suppliers.csv")
             
             # โหลด Master_Dispatch.csv
-            if self.dispatch_path and self.dispatch_path.exists():
+            if os.path.exists(self.dispatch_path):
                 self.dispatch_data = pd.read_csv(self.dispatch_path, encoding='utf-8')
                 print(f"Loaded {len(self.dispatch_data)} rows from Master_Dispatch.csv")
             
             # โหลด Rolls จาก storage.db (สำหรับ roll_id และ lot)
-            if self.db_path and self.db_path.exists():
+            if os.path.exists(self.db_path):
                 try:
                     conn = sqlite3.connect(str(self.db_path))
                     self.rolls_data = pd.read_sql_query("SELECT * FROM rolls", conn)

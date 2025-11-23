@@ -41,9 +41,9 @@ class APIServer:
         # Initialize Flask and SocketIO
         self.app = Flask(__name__)
         self.socketio = SocketIO(
-            self.app, 
-            cors_allowed_origins="*", 
-            async_mode='threading',
+            self.app,
+            cors_allowed_origins="*",
+            async_mode='eventlet',
             logger=debug,
             engineio_logger=debug
         )
@@ -190,43 +190,4 @@ class APIServer:
         finally:
             self._running = False
 
-def run_api_server(host: str = '0.0.0.0', port: int = 5000, debug: bool = False) -> 'APIServer':
-    """Create and start the API server in a separate thread
-    
-    Args:
-        host: Host to bind the server to
-        port: Port to bind the server to
-        debug: Whether to run in debug mode
-        
-    Returns:
-        The APIServer instance
-    """
-    server = APIServer(host=host, port=port, debug=debug)
-    server.run_in_thread()
-    return server
 
-if __name__ == "__main__":
-    import sys
-    
-    # Parse command line arguments
-    import argparse
-    parser = argparse.ArgumentParser(description='Run the Fabric Roll Management API server')
-    parser.add_argument('--host', default='0.0.0.0', help='Host to bind the server to')
-    parser.add_argument('--port', type=int, default=5000, help='Port to bind the server to')
-    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
-    
-    args = parser.parse_args()
-    
-    print(f"Starting API server on {args.host}:{args.port} (debug: {args.debug})")
-    print("Press Ctrl+C to stop")
-    
-    try:
-        server = run_api_server(host=args.host, port=args.port, debug=args.debug)
-        while True:
-            # Keep the main thread alive
-            import time
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-        server.stop()
-        sys.exit(0)
