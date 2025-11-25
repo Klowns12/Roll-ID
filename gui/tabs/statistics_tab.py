@@ -11,7 +11,10 @@ from PySide6.QtCharts import (
 )
 import sys
 import os
+import math
 
+from typing import List, Dict
+from storage import Roll
 from utils.master_suppliers_manager import MasterSuppliersManager
 
 class StatisticsTab(QWidget):
@@ -26,6 +29,7 @@ class StatisticsTab(QWidget):
         root_dir = os.getcwd()
 
         
+        self.rolls: List[Roll] = []
         self.suppliers_manager = MasterSuppliersManager()
         
         self.setup_ui()
@@ -64,16 +68,22 @@ class StatisticsTab(QWidget):
         self.suppliers_input = QLineEdit()
         self.suppliers_input.setPlaceholderText("ค้นหา Suppliers...")
         self.suppliers_input.setMaximumWidth(250)
-        self.suppliers_input.textChanged.connect(self.on_supplier_changed)
+        self.suppliers_input.textChanged.connect(self.on_filters_changed)
         row2_layout.addWidget(self.suppliers_input)
         
         row2_layout.addSpacing(20)
         
         row2_layout.addWidget(QLabel("ค้นหา"))
+        self.search_field_combo = QComboBox()
+        self.search_field_combo.addItems(["Code", "Location", "Roll ID", "Lot"])
+        self.search_field_combo.setMaximumWidth(140)
+        self.search_field_combo.currentIndexChanged.connect(self.on_filters_changed)
+        row2_layout.addWidget(self.search_field_combo)
+        
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Code / Location / Roll ID / Lot")
         self.search_input.setMaximumWidth(200)
-        self.search_input.textChanged.connect(self.on_search_changed)
+        self.search_input.textChanged.connect(self.on_filters_changed)
         row2_layout.addWidget(self.search_input)
         
         row2_layout.addStretch()
@@ -141,10 +151,10 @@ class StatisticsTab(QWidget):
         
         # ===== DATA TABLE =====
         self.data_table = QTableWidget()
-        self.data_table.setColumnCount(10)
+        self.data_table.setColumnCount(11)
         self.data_table.setHorizontalHeaderLabels([
-            "Code", "SubPartCode", "SupCode", "Supplier Name", "Description","Lot No.",
-            "Location", "Unit", "Exist. Qty", "เศษ.QTY",
+            "Code", "Roll ID", "SubPartCode", "SupCode", "Supplier Name", "Description", "Lot No.",
+            "Location", "Unit", "Exist_Qty", "RollStatus"
         ])
         self.data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.data_table.setAlternatingRowColors(True)
@@ -163,91 +173,174 @@ class StatisticsTab(QWidget):
     def load_data(self):
         """Load and display statistics data"""
         try:    
-            self.suppliers_manager = MasterSuppliersManager()
-            
-            # Get all suppliers data
+            if hasattr(self.storage, "search_rolls"):
+                self.rolls = self.storage.search_rolls()
+            elif hasattr(self.storage, "get_all_rolls"):
+                self.rolls = self.storage.get_all_rolls()
+            else:
+                self.rolls = []
             self.display_suppliers_data()
         except Exception as e:
-            print(f"Error loading statistics: {e}")
+            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error loading statistics: {e}")
     
-    def on_supplier_changed(self, supplier_name):
-        """Handle supplier search change"""
-        self.display_suppliers_data()
-    
-    def on_search_changed(self, text):
-        """Handle code search change"""
+    def on_filters_changed(self, *_):
+        """Handle any filter change"""
         self.display_suppliers_data()
     
     def display_suppliers_data(self):
-        """Display suppliers data in table - ค้นหาพร้อมกันทั้ง Supplier และ ค้นหา (Code/Location/Roll ID/Lot)"""
+        """Display combined supplier and roll data in table"""
         try:
-            # Get filter values
             supplier_name = self.suppliers_input.text().strip()
             search_query = self.search_input.text().strip()
-            
-            # ค้นหาพร้อมกัน
-            results = self.suppliers_manager.search_combined(supplier_name, search_query)
-            
-            # Determine search type (เพื่อตรวจสอบว่าแสดง Exist. Qty หรือไม่)
+            search_field = self.search_field_combo.currentText()
+
+            supplier_records = self.suppliers_manager.search_combined(supplier_name, search_query)
+
+            # Prepare roll lookups
+            roll_by_id: Dict[str, Roll] = {}
+            rolls_by_code: Dict[str, List[Roll]] = {}
+            if self.rolls:
+                for roll in self.rolls:
+                    roll_by_id[roll.roll_id] = roll
+                    code_key = roll.sku or roll.pdt_code or ""
+                    if code_key:
+                        rolls_by_code.setdefault(code_key, []).append(roll)
+
+            def matches_roll_filters(roll: Roll) -> bool:
+                if supplier_name and supplier_name.lower() not in (roll.spl_name or "").lower():
+                    return False
+                if not search_query:
+                    return True
+                target = ""
+                if search_field == "Code":
+                    target = roll.sku or roll.pdt_code or ""
+                elif search_field == "Location":
+                    target = roll.location or ""
+                elif search_field == "Roll ID":
+                    target = roll.roll_id or ""
+                elif search_field == "Lot":
+                    target = roll.lot or ""
+                return search_query.lower() in str(target).lower()
+
+            def matches_row_filters(row_data: Dict[str, str]) -> bool:
+                if supplier_name:
+                    supplier_text = str(row_data.get("Supplier Name", row_data.get("Suppliers", ""))).lower()
+                    if supplier_name.lower() not in supplier_text:
+                        return False
+                if not search_query:
+                    return True
+                if search_field == "Code":
+                    target = row_data.get("Code", "")
+                elif search_field == "Location":
+                    target = row_data.get("Location", "")
+                elif search_field == "Roll ID":
+                    target = row_data.get("Roll ID", "")
+                else:  # Lot
+                    target = row_data.get("Lot No.", row_data.get("lot", ""))
+                return search_query.lower() in str(target).lower()
+
+            table_rows: List[Dict[str, str]] = []
+            used_roll_ids: set[str] = set()
+
             search_type = "supplier" if supplier_name else "all"
-            
-            # Display in table
-            self.display_table_data(results, search_type)
-            
+
+            for record in supplier_records:
+                row_data = self.suppliers_manager.get_row_data(record, search_type)
+                if not matches_row_filters(row_data):
+                    continue
+
+                code_value = row_data.get("Code", "")
+                roll_id_value = row_data.get("Roll ID", "")
+
+                matching_rolls: List[Roll] = []
+                if roll_id_value:
+                    roll_match = roll_by_id.get(roll_id_value)
+                    if roll_match and matches_roll_filters(roll_match):
+                        matching_rolls.append(roll_match)
+                if not matching_rolls and code_value:
+                    for roll in rolls_by_code.get(code_value, []):
+                        if matches_roll_filters(roll):
+                            matching_rolls.append(roll)
+
+                exist_qty_value = 0.0
+                roll_status_value = ""
+                if matching_rolls:
+                    exist_qty_value = sum((roll.current_length or 0.0) for roll in matching_rolls)
+                    original_total = sum((roll.original_length or 0.0) for roll in matching_rolls)
+                    roll_status_value = "เต็มม้วน" if exist_qty_value >= original_total else "เศษ"
+                    for roll in matching_rolls:
+                        used_roll_ids.add(roll.roll_id)
+                else:
+                    exist_text = row_data.get("Exist. Qty")
+                    if isinstance(exist_text, (int, float)) and not math.isnan(exist_text):
+                        exist_qty_value = float(exist_text)
+                    else:
+                        exist_qty_value = 0.0
+
+                table_rows.append({
+                    "Code": row_data.get("Code", ""),
+                    "Roll ID": row_data.get("Roll ID", ""),
+                    "SubPartCode": row_data.get("SubPartCode", ""),
+                    "SupCode": row_data.get("SupCode", ""),
+                    "Supplier Name": row_data.get("Supplier Name", row_data.get("Suppliers", "")),
+                    "Description": row_data.get("Description", ""),
+                    "Lot No.": row_data.get("Lot No.", row_data.get("lot", "")),
+                    "Location": row_data.get("Location", ""),
+                    "Unit": row_data.get("Unit", ""),
+                    "Exist_Qty": f"{exist_qty_value:.2f}" if exist_qty_value else "",
+                    "RollStatus": roll_status_value
+                })
+
+            # Include rolls not represented in supplier data (e.g., new entries)
+            if self.rolls:
+                for roll in self.rolls:
+                    if roll.roll_id in used_roll_ids:
+                        continue
+                    if not matches_roll_filters(roll):
+                        continue
+                    code_value = roll.sku or roll.pdt_code or ""
+                    table_rows.append({
+                        "Code": code_value,
+                        "Roll ID": roll.roll_id,
+                        "SubPartCode": roll.subpart_code or "",
+                        "SupCode": roll.sup_code or "",
+                        "Supplier Name": roll.spl_name or "",
+                        "Description": roll.pdt_name or roll.specification or "",
+                        "Lot No.": roll.lot or "",
+                        "Location": roll.location or "",
+                        "Unit": roll.unit_type or roll.packing_unit or "",
+                        "Exist_Qty": f"{(roll.current_length or 0.0):.2f}" if roll.current_length is not None else "",
+                        "RollStatus": "เต็มม้วน" if roll.current_length >= (roll.original_length or 0.0) else "เศษ"
+                    })
+
+            self.display_table_data(table_rows)
+
         except Exception as e:
-            print(f"Error displaying suppliers data: {e}")
+            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error displaying reports: {e}")
     
-    def display_table_data(self, results, search_type="all"):
-        """Display data in table with separated data from each file"""
-        if not results:
-            self.data_table.setRowCount(0)
-            return
-        
-        self.data_table.setRowCount(len(results))
-        
-        # Update table columns based on search type
-        if search_type == "supplier":
-            # Show Exist. Qty and เศษ.QTY when searching by supplier
-            self.data_table.setColumnCount(11)
-            self.data_table.setHorizontalHeaderLabels([
-                "Code","Roll ID","SubPartCode", "SupCode", "Supplier Name", "Description",
-                "Lot No.", "Location", "Unit", "Exist. Qty", "เศษ.QTY", ""
-            ])
-        else:
-            # Hide Exist. Qty and เศษ.QTY when searching by code only
-            self.data_table.setColumnCount(9)
-            self.data_table.setHorizontalHeaderLabels([
-                "Code","Roll ID","SubPartCode", "SupCode", "Supplier Name", "Description","Lot No.", "Location", "Unit",
-            ])
-        
-        # Display data
-        for row, item in enumerate(results):
-            # Get separated data
-            row_data = self.suppliers_manager.get_row_data(item, search_type)
-            
-            # Display each column
-            col_idx = 0
-            for col_name in ["Code","Roll ID", "SubPartCode", "SupCode", "Supplier Name", "Description", "Lot No.", "Location", "Unit"]:
-                if col_idx >= self.data_table.columnCount():
-                    break
-                value = row_data.get(col_name, "")
-                self.data_table.setItem(row, col_idx, QTableWidgetItem(str(value)))
-                col_idx += 1
-            
-            # Add Exist. Qty and เศษ.QTY if search_type is "supplier"
-            if search_type == "supplier" and col_idx < self.data_table.columnCount():
-                exist_qty = row_data.get("Exist. Qty", "")
-                scrap_qty = row_data.get("เศษ.QTY", "")
-                self.data_table.setItem(row, col_idx, QTableWidgetItem(str(exist_qty)))
-                col_idx += 1
-                if col_idx < self.data_table.columnCount():
-                    self.data_table.setItem(row, col_idx, QTableWidgetItem(str(scrap_qty)))
-        
-        # ปรับขนาด column
-        self.data_table.horizontalHeader().setStretchLastSection(False)
-        for i in range(self.data_table.columnCount()):
-            self.data_table.setColumnWidth(i, 120)
-        # ให้ column สุดท้ายยืดเต็มพื้นที่ว่าง
+    def display_table_data(self, rows: List[Dict[str, str]]):
+        """Display rows in the table, preserving legacy columns and new metrics"""
+        headers = [
+            "Code", "Roll ID", "SubPartCode", "SupCode", "Supplier Name", "Description",
+            "Lot No.", "Location", "Unit", "Exist_Qty", "RollStatus"
+        ]
+        self.data_table.setColumnCount(len(headers))
+        self.data_table.setHorizontalHeaderLabels(headers)
+
+        self.data_table.setRowCount(len(rows))
+        for row_idx, data in enumerate(rows):
+            for col_idx, header in enumerate(headers):
+                value = data.get(header, "")
+                item = QTableWidgetItem(str(value))
+                if header == "RollStatus":
+                    status_text = str(value).strip()
+                    if status_text == "เต็มม้วน":
+                        item.setForeground(Qt.darkGreen)
+                    elif status_text:
+                        item.setForeground(Qt.darkRed)
+                self.data_table.setItem(row_idx, col_idx, item)
+
+        self.data_table.resizeColumnsToContents()
         self.data_table.horizontalHeader().setStretchLastSection(True)
     
     def update_pie_chart(self, chart, data):

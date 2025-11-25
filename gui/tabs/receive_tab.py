@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QLineEdit, QComboBox, QPushButton, QMessageBox, QTabWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QLabel, QDoubleSpinBox,
-    QDateEdit, QCheckBox, QFileDialog, QInputDialog, QStyle, QDialog
+    QDateEdit, QCheckBox, QFileDialog, QInputDialog, QStyle, QDialog, QSpinBox
 )
 from PySide6.QtCore import Qt, QDate, Signal as pyqtSignal, QObject
 from PySide6.QtGui import QIntValidator, QDoubleValidator, QPixmap
@@ -98,6 +98,13 @@ class ReceiveTab(QWidget):
         self.manual_lot = QLineEdit()
         self.manual_lot.setPlaceholderText("e.g., LOT2023-001")
         form_layout.addRow("Lot No.*:", self.manual_lot)
+        
+        # Quantity
+        self.manual_quantity = QSpinBox()
+        self.manual_quantity.setMinimum(1)
+        self.manual_quantity.setMaximum(999)
+        self.manual_quantity.setValue(1)
+        form_layout.addRow("Quantity*:", self.manual_quantity)
         
         # Location
         self.manual_location = QLineEdit()
@@ -350,37 +357,73 @@ class ReceiveTab(QWidget):
             self.manual_lot.setFocus()
             return
         
-        # Generate Roll ID automatically (R001, R002, etc.)
-        roll_id = self.roll_id_generator.get_next_roll_id()
+        # Get quantity
+        quantity = self.manual_quantity.value()
+        if quantity < 1:
+            QMessageBox.warning(self, "Validation Error", "Quantity must be at least 1!")
+            return
+        
+        # Generate base roll data
         code = self.manual_code.text().strip().upper()
         lot = self.manual_lot.text().strip().upper()
+        length_text = self.manual_length.text().strip()
+        subpart_code = self.manual_subpart_code.text().strip()
+        sup_code = self.manual_sup_code.text().strip()
+        supplier_name = self.manual_supplier_name.text().strip()
+        description = self.manual_description.text().strip()
+        location = self.manual_location.text().strip()
+        unit_value = self.manual_unit.text().strip() or 'MTS'
+        colour = self.manual_colour.text().strip()
+        width = self.manual_width.text().strip()
+        if length_text:
+            try:
+                length_value = float(length_text)
+            except ValueError:
+                QMessageBox.warning(self, "Validation Error", "Length must be a number!")
+                self.manual_length.setFocus()
+                return
+        else:
+            length_value = 0.0
         
-        # Create roll data
-        roll_data = {
-            'roll_id': roll_id,
-            'sku': code,
-            'pdt_code': code,
-            'code': code,
-            'subpart_code': self.manual_subpart_code.text().strip(),
-            'spl_part_code': self.manual_subpart_code.text().strip(),
-            'sup_code': self.manual_sup_code.text().strip(),
-            'spl_code': self.manual_sup_code.text().strip(),
-            'supplier_name': self.manual_supplier_name.text().strip(),
-            'Suppliers': self.manual_supplier_name.text().strip(),
-            'description': self.manual_description.text().strip(),
-            'pdt_name': self.manual_description.text().strip(),
-            'lot': lot,
-            'location': self.manual_location.text().strip(),
-            'unit_type': self.manual_unit.text().strip() or 'MTS',
-            'packing_unit': self.manual_unit.text().strip() or 'MTS',
-            'colour': self.manual_colour.text().strip(),
-            'width': self.manual_width.text().strip(),
-            'length': self.manual_length.text().strip(),
-            'date_received': self.manual_date.date().toString("yyyy-MM-dd")
-        }
+        # Generate roll IDs for all quantities at once
+        roll_ids = self.roll_id_generator.get_next_roll_ids(quantity)
         
-        # Emit signal with roll data
-        self.roll_received.emit(roll_data)
+        # Create and emit roll data for each roll
+        for i in range(quantity):
+            roll_id = roll_ids[i]
+            roll_data = {
+                'roll_id': roll_id,
+                'sku': code,
+                'pdt_code': code,
+                'code': code,
+                'subpart_code': subpart_code,
+                'spl_part_code': subpart_code,
+                'sup_code': sup_code,
+                'spl_code': sup_code,
+                'supplier_name': supplier_name,
+                'Suppliers': supplier_name,
+                'description': description,
+                'pdt_name': description,
+                'lot': lot,
+                'location': location,
+                'unit_type': unit_value,
+                'packing_unit': unit_value,
+                'colour': colour,
+                'width': width,
+                'length': length_value,
+                'date_received': self.manual_date.date().toString("yyyy-MM-dd")
+            }
+            
+            # Emit signal with roll data
+            self.roll_received.emit(roll_data)
+            
+        # Show success message for multiple rolls
+        if quantity > 1:
+            QMessageBox.information(
+                self,
+                "Success",
+                f"Successfully created {quantity} rolls with IDs: {', '.join(roll_ids)}"
+            )
     
     def submit_master_form(self):
         """Submit the master entry form"""

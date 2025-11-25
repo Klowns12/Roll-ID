@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
     QLabel, QComboBox, QMessageBox
 )
 from PySide6.QtCore import Qt
+from typing import List
+from storage import Roll
 import sys
 import os
 
@@ -21,6 +23,7 @@ class ReportsTab(QWidget):
     def __init__(self, storage):
         super().__init__()
         self.storage = storage
+        self.rolls = []
         
         # Initialize suppliers manager
         suppliers_path = os.path.join(
@@ -30,6 +33,7 @@ class ReportsTab(QWidget):
         self.suppliers_manager = SuppliersManager(suppliers_path)
         
         self.setup_ui()
+        self.load_rolls_data()
     
     def setup_ui(self):
         """สร้าง UI"""
@@ -45,8 +49,22 @@ class ReportsTab(QWidget):
         # Tab 2: Roll Search
         rolls_tab = self.create_rolls_search_tab()
         tabs.addTab(rolls_tab, "ค้นหา Roll")
+        self.roll_filter_tab = rolls_tab
         
         layout.addWidget(tabs)
+    
+    def load_rolls_data(self):
+        """โหลดข้อมูลม้วนทั้งหมดจาก storage"""
+        try:
+            if hasattr(self.storage, 'search_rolls'):
+                self.rolls = self.storage.search_rolls()
+            elif hasattr(self.storage, 'get_all_rolls'):
+                self.rolls = self.storage.get_all_rolls()
+            else:
+                self.rolls = []
+            self.refresh_rolls_table(self.rolls)
+        except Exception as e:
+            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error loading rolls: {str(e)}")
     
     def create_suppliers_search_tab(self):
         """สร้าง Tab สำหรับค้นหา Suppliers"""
@@ -95,52 +113,40 @@ class ReportsTab(QWidget):
         # Search group
         search_group = QGroupBox("ค้นหา Roll")
         search_layout = QFormLayout()
-        
-        # Search by Location
-        self.location_input = QLineEdit()
-        self.location_input.setPlaceholderText("ค้นหาตามสถานที่เก็บ...")
-        self.location_input.textChanged.connect(self.search_rolls_by_location)
-        search_layout.addRow("สถานที่เก็บ (Location):", self.location_input)
-        
-        # Search by Code (pdt_code)
-        search_code_layout = QHBoxLayout()
-        self.roll_code_input = QLineEdit()
-        self.roll_code_input.setPlaceholderText("ค้นหาตามรหัสสินค้า (Code)...")
-        self.roll_code_btn = QPushButton("ค้นหา")
-        self.roll_code_btn.clicked.connect(self.search_rolls_by_code)
-        search_code_layout.addWidget(self.roll_code_input)
-        search_code_layout.addWidget(self.roll_code_btn)
-        search_layout.addRow("รหัสสินค้า (Code):", search_code_layout)
-        
-        # Search by Roll ID
-        search_roll_id_layout = QHBoxLayout()
-        self.roll_id_input = QLineEdit()
-        self.roll_id_input.setPlaceholderText("ค้นหาตาม Roll ID (เช่น R001)...")
-        self.roll_id_btn = QPushButton("ค้นหา")
-        self.roll_id_btn.clicked.connect(self.search_rolls_by_roll_id)
-        search_roll_id_layout.addWidget(self.roll_id_input)
-        search_roll_id_layout.addWidget(self.roll_id_btn)
-        search_layout.addRow("Roll ID:", search_roll_id_layout)
-        
-        # Search by Lot
-        search_lot_layout = QHBoxLayout()
-        self.lot_input = QLineEdit()
-        self.lot_input.setPlaceholderText("ค้นหาตาม Lot...")
-        self.lot_btn = QPushButton("ค้นหา")
-        self.lot_btn.clicked.connect(self.search_rolls_by_lot)
-        search_lot_layout.addWidget(self.lot_input)
-        search_lot_layout.addWidget(self.lot_btn)
-        search_layout.addRow("Lot:", search_lot_layout)
-        
+
+        # Filter dropdown and input
+        filter_layout = QHBoxLayout()
+        self.filter_field_combo = QComboBox()
+        self.filter_field_combo.addItems([
+            "Code",
+            "Location",
+            "Roll ID",
+            "Lot"
+        ])
+        self.filter_field_combo.currentIndexChanged.connect(self.apply_roll_filters)
+
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText("Code / Location / Roll ID / Lot")
+        self.filter_input.textChanged.connect(self.apply_roll_filters)
+
+        clear_btn = QPushButton("ล้าง")
+        clear_btn.clicked.connect(self.clear_roll_filters)
+
+        filter_layout.addWidget(self.filter_field_combo)
+        filter_layout.addWidget(self.filter_input, 1)
+        filter_layout.addWidget(clear_btn)
+
+        search_layout.addRow("ค้นหา:", filter_layout)
         search_group.setLayout(search_layout)
         layout.addWidget(search_group)
         
         # Results table
         self.rolls_table = QTableWidget()
-        self.rolls_table.setColumnCount(10)
+        self.rolls_table.setColumnCount(12)
         self.rolls_table.setHorizontalHeaderLabels([
-            "Roll ID", "SKU", "Lot", "Location", "Grade", 
-            "Current Length", "Original Length", "Status", "Date Received", "Supplier"
+            "Roll ID", "SKU", "Lot", "Location", "Grade",
+            "Current Length", "Original Length", "Exist_Qty", "RollStatus",
+            "Status", "Date Received", "Supplier"
         ])
         self.rolls_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.rolls_table.setAlternatingRowColors(True)
@@ -197,79 +203,57 @@ class ReportsTab(QWidget):
     
     # ========== Rolls Search Methods ==========
     
-    def search_rolls_by_location(self, location):
-        """ค้นหา Roll ตามสถานที่เก็บ"""
-        if not location.strip():
-            self.rolls_table.setRowCount(0)
+    def apply_roll_filters(self):
+        """ใช้ตัวกรองการค้นหาแบบ dropdown + text"""
+        if not self.rolls:
+            self.load_rolls_data()
             return
-        
-        try:
-            rolls = self.storage.get_all_rolls()
-            results = [r for r in rolls if location.lower() in r.location.lower()]
-            self.display_rolls_results(results)
-        except Exception as e:
-            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error: {str(e)}")
-    
-    def search_rolls_by_code(self):
-        """ค้นหา Roll ตามรหัสสินค้า (SKU)"""
-        code = self.roll_code_input.text().strip()
-        if not code:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกรหัสสินค้า")
-            return
-        
-        try:
-            rolls = self.storage.get_all_rolls()
-            results = [r for r in rolls if code.lower() in r.sku.lower()]
-            self.display_rolls_results(results)
-        except Exception as e:
-            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error: {str(e)}")
-    
-    def search_rolls_by_roll_id(self):
-        """ค้นหา Roll ตาม Roll ID"""
-        roll_id = self.roll_id_input.text().strip()
-        if not roll_id:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอก Roll ID")
-            return
-        
-        try:
-            roll = self.storage.get_roll(roll_id)
-            if roll:
-                self.display_rolls_results([roll])
-            else:
-                QMessageBox.information(self, "ผลการค้นหา", f"ไม่พบ Roll ID {roll_id}")
-                self.rolls_table.setRowCount(0)
-        except Exception as e:
-            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error: {str(e)}")
-    
-    def search_rolls_by_lot(self):
-        """ค้นหา Roll ตาม Lot"""
-        lot = self.lot_input.text().strip()
-        if not lot:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอก Lot")
-            return
-        
-        try:
-            rolls = self.storage.get_all_rolls()
-            results = [r for r in rolls if lot.lower() in r.lot.lower()]
-            self.display_rolls_results(results)
-        except Exception as e:
-            QMessageBox.critical(self, "ข้อผิดพลาด", f"Error: {str(e)}")
-    
-    def display_rolls_results(self, results):
-        """แสดงผลการค้นหา Roll"""
-        self.rolls_table.setRowCount(len(results))
-        
-        for row, roll in enumerate(results):
+
+        keyword = self.filter_input.text().strip().lower()
+        if not keyword:
+            filtered = self.rolls
+        else:
+            field = self.filter_field_combo.currentText()
+            filtered = []
+            for roll in self.rolls:
+                value = ""
+                if field == "Code":
+                    value = roll.sku or roll.pdt_code or ""
+                elif field == "Location":
+                    value = roll.location or ""
+                elif field == "Roll ID":
+                    value = roll.roll_id or ""
+                elif field == "Lot":
+                    value = roll.lot or ""
+
+                if keyword in str(value).lower():
+                    filtered.append(roll)
+
+        self.refresh_rolls_table(filtered)
+
+    def clear_roll_filters(self):
+        """ล้างตัวกรองและโชว์ข้อมูลทั้งหมด"""
+        self.filter_input.clear()
+        self.filter_field_combo.setCurrentIndex(0)
+        self.refresh_rolls_table(self.rolls)
+
+    def refresh_rolls_table(self, rolls: List[Roll]):
+        """อัปเดตตารางม้วนตามรายการที่ให้มา"""
+        self.rolls_table.setRowCount(len(rolls))
+
+        for row, roll in enumerate(rolls):
             # ดึงข้อมูล Supplier จาก Suppliers.csv
             supplier = ""
             try:
                 supplier_data = self.suppliers_manager.search_by_code(roll.sku)
                 if supplier_data:
-                    supplier = supplier_data.get(supplier_data.columns[1], "")
-            except:
+                    supplier = supplier_data.get(list(supplier_data.keys())[1], "")
+            except Exception:
                 pass
-            
-            # แสดงข้อมูล
+
+            exist_qty = roll.current_length
+            roll_status = "เต็มม้วน" if roll.current_length >= roll.original_length else "เศษ"
+
             self.rolls_table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
             self.rolls_table.setItem(row, 1, QTableWidgetItem(roll.sku))
             self.rolls_table.setItem(row, 2, QTableWidgetItem(roll.lot))
@@ -277,8 +261,10 @@ class ReportsTab(QWidget):
             self.rolls_table.setItem(row, 4, QTableWidgetItem(roll.grade))
             self.rolls_table.setItem(row, 5, QTableWidgetItem(f"{roll.current_length:.2f}"))
             self.rolls_table.setItem(row, 6, QTableWidgetItem(f"{roll.original_length:.2f}"))
-            self.rolls_table.setItem(row, 7, QTableWidgetItem(roll.status))
-            self.rolls_table.setItem(row, 8, QTableWidgetItem(roll.date_received))
-            self.rolls_table.setItem(row, 9, QTableWidgetItem(supplier))
-        
+            self.rolls_table.setItem(row, 7, QTableWidgetItem(f"{exist_qty:.2f}"))
+            self.rolls_table.setItem(row, 8, QTableWidgetItem(roll_status))
+            self.rolls_table.setItem(row, 9, QTableWidgetItem(roll.status))
+            self.rolls_table.setItem(row, 10, QTableWidgetItem(roll.date_received))
+            self.rolls_table.setItem(row, 11, QTableWidgetItem(supplier))
+
         self.rolls_table.resizeColumnsToContents()
