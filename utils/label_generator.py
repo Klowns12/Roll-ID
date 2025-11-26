@@ -75,10 +75,10 @@ class LabelGenerator:
         data = {
             'roll_id': _get_value('roll_id'),
             'sku': _get_value('sku', 'code', 'pdt_code'),
-            'product_name': _get_value('product_name', 'pdt_name', 'description', 'spl_name', 'supplier_name'),
+            'product_name': _get_value('code', 'sku', 'pdt_code', 'product_name', 'pdt_name', 'description'),
             'lot': _get_value('lot', 'lot_no'),
             'date_received': _get_value('date_received', default=datetime.now().strftime('%Y-%m-%d')),
-            'specification': _get_value('specification', 'specificattion', 'pdt_code', 'sku', 'code'),
+            'specification': _get_value('specification', 'specificattion', 'pdt_name', 'product_name', 'pdt_code', 'sku', 'code'),
             'colour': _get_value('colour', 'color'),
             'packing_unit': _get_value('packing_unit', 'package_unit', 'unit_type'),
             'unit_type': _get_value('unit_type', default='MTS'),
@@ -123,10 +123,48 @@ class LabelGenerator:
             img.paste(qr_img, (qr_x, qr_y))
         
         # ข้อมูลทางขวาของ QR Code
-        try:
-            font_large = ImageFont.truetype("arialbd.ttf", 34)
-        except:
-            font_large = ImageFont.load_default()
+        # Try to load Thai font with multiple fallbacks
+        thai_font_paths = [
+            'C:/Windows/Fonts/THSarabunNew-Bold.ttf',  # Common Windows path
+            'C:/Windows/Fonts/THSarabunNew.ttf',       # Regular version
+            'C:/Windows/Fonts/THSarabun.ttf',          # Older version
+            'C:/Windows/Fonts/TH Niramit AS.ttf',      # Another common Thai font
+            'C:/Windows/Fonts/LeelawUI.ttf',           # Windows 10+ Thai font
+            'C:/Windows/Fonts/leelawad.ttf',           # Windows legacy Thai font
+            'THSarabunNew-Bold.ttf',                   # Local directory
+            'arialuni.ttf',                            # Windows Unicode font with Thai support
+            'ArialUni.ttf',
+            'C:/Windows/Fonts/arial.ttf',              # Regular Arial
+            'arial.ttf'
+        ]
+        
+        # Function to load font with multiple fallbacks
+        def load_font(paths, size):
+            for path in paths:
+                try:
+                    return ImageFont.truetype(path, size)
+                except (IOError, OSError):
+                    continue
+            try:
+                return ImageFont.truetype("arialbd.ttf", size)
+            except:
+                return ImageFont.load_default()
+        
+        # Load large font for most text
+        font_large = load_font(thai_font_paths, 34)
+        
+        # Try to load a specific Thai font for the specification text
+        thai_font = None
+        for path in thai_font_paths:
+            try:
+                thai_font = ImageFont.truetype(path, 34)
+                break
+            except (IOError, OSError):
+                continue
+        
+        # If no Thai font found, use the main large font
+        if thai_font is None:
+            thai_font = font_large
 
         t_x = 50 
         t_y = 180
@@ -145,7 +183,7 @@ class LabelGenerator:
 
         spec_text = truncate_text(data['specification'], 25)
         draw.text((t_x, t_y + (t_gap * 1)), f"SPECIFICAT ON : {spec_text}", 
-                fill=self.color_text, font=font_large)
+                fill=self.color_text, font=thai_font)
         
         product_text = truncate_text(data['product_name'], 25)
         draw.text((t_x, t_y + (t_gap * 2)), f"PRODUCT : {product_text}", 

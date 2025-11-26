@@ -43,7 +43,7 @@ class APIServer:
         self.socketio = SocketIO(
             self.app,
             cors_allowed_origins="*",
-            async_mode='threading',
+            async_mode=None,
             logger=debug,
             engineio_logger=debug
         )

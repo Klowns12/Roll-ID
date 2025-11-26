@@ -11,12 +11,18 @@ class DashboardTab(QWidget):
         super().__init__()
         self.storage = storage
         self.setup_ui()
+        
+        # Initial data load
         self.refresh_data()
         
-        # Set up auto-refresh timer (every 60 seconds)
+        # Set up auto-refresh timer (every 5 seconds)
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_data)
-        self.refresh_timer.start(60000)  # 60 seconds
+        self.refresh_timer.start(5000)  # 5 seconds
+        
+        # Connect to storage signals if available
+        if hasattr(storage, 'data_changed'):
+            storage.data_changed.connect(self.refresh_data)
     
     def setup_ui(self):
         """Set up the dashboard UI components"""
@@ -154,27 +160,29 @@ class DashboardTab(QWidget):
     
     def update_stats_cards(self):
         """Update the statistics cards with current data"""
-       
-        self.total_master_data_card.findChild(QLabel).setText(str(self.storage.get_master_data_count()))
-
-        self.total_rolls_card.findChild(QLabel).setText(str(self.storage.get_roll_count()))
-        
-        self.active_rolls_card.findChild(QLabel).setText(str(self.storage.get_roll_active_count()))
-        
-        # Update low stock (rolls with length < 10% of original)
-        # low_stock = 0
-        # for roll in rolls:
-        #     if roll.original_length > 0 and (roll.current_length / roll.original_length) < 0.1:
-        #         low_stock += 1
-        # self.low_stock_card.findChild(QLabel).setText(str(low_stock))
-        
-        # Update today's activities
-        today = datetime.now().date()
-        today_activities = len([
-            log for log in self.storage.get_logs() 
-            if datetime.fromisoformat(log.timestamp).date() == today
-        ])
-        self.recent_activities_card.findChild(QLabel).setText(str(today_activities))
+        try:
+            # Update master data count
+            master_count = self.storage.get_master_data_count()
+            self.total_master_data_card.findChild(QLabel).setText(str(master_count))
+            
+            # Update total rolls count
+            total_rolls = self.storage.get_roll_count()
+            self.total_rolls_card.findChild(QLabel).setText(str(total_rolls))
+            
+            # Update active rolls count
+            active_rolls = self.storage.get_roll_active_count()
+            self.active_rolls_card.findChild(QLabel).setText(str(active_rolls))
+            
+            # Update today's activities
+            today = datetime.now().date()
+            today_activities = len([
+                log for log in self.storage.get_logs() 
+                if datetime.fromisoformat(log.timestamp).date() == today
+            ])
+            self.recent_activities_card.findChild(QLabel).setText(str(today_activities))
+            
+        except Exception as e:
+            print(f"Error updating stats cards: {e}")
     
     def update_recent_rolls(self):
         """Update the recent rolls table"""

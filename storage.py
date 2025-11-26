@@ -229,16 +229,10 @@ class StorageManager:
         )
         return True
 
-    def get_master_data_count(self, roll_id: Optional[str] = None) -> int:
-        """นับจำนวนแถวใน master_products (ทั้งหมด หรือเฉพาะ roll_id)"""
+    def get_master_data_count(self) -> int:
+        """นับจำนวนแถวใน master_products ทั้งหมด"""
         with self._connect() as conn:
-            if roll_id:
-                cur = conn.execute(
-                    "SELECT COUNT(*) FROM master_products WHERE roll_id = ?",
-                    (roll_id,)
-                )
-            else:
-                cur = conn.execute("SELECT COUNT(*) FROM master_products")
+            cur = conn.execute("SELECT COUNT(*) FROM master_products")
             count = cur.fetchone()[0]
         return count
 
