@@ -84,8 +84,19 @@ class MobileConnectionServer(QObject):
 
         self._find_cert_files()
 
-        hostname = socket.gethostname()
-        self.local_ip = socket.gethostbyname(hostname)
+        # ใช้ IP ที่เชื่อมต่อกับ router (WiFi) แทนการใช้ hostname
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # เชื่อมต่อไปที่ Google DNS เพื่อหา IP ที่ใช้งานจริง
+            s.connect(('8.8.8.8', 80))
+            self.local_ip = s.getsockname()[0]
+        except Exception:
+            # ถ้าไม่ได้ ใช้วิธีเดิม
+            hostname = socket.gethostname()
+            self.local_ip = socket.gethostbyname(hostname)
+        finally:
+            s.close()
+        
         self.port = port
         self.server = None
         self.thread = None
@@ -93,6 +104,8 @@ class MobileConnectionServer(QObject):
         self.client_open_queue = None
 
         self.url = f"https://{self.local_ip}:{self.port}"
+        
+        print(f"Detected IP Address: {self.local_ip}")
 
         cert_folder = "cert"
         os.makedirs(cert_folder, exist_ok=True)
@@ -135,7 +148,8 @@ class MobileConnectionServer(QObject):
 
         def run():
             print(">> Creating HTTPServer...")
-            httpd = HTTPServer(("", self.port), MobileConnectionHandler)
+            # Bind to 0.0.0.0 เพื่อรับ connection จากทุก network interface
+            httpd = HTTPServer(("0.0.0.0", self.port), MobileConnectionHandler)
             httpd.request_queue = self.request_queue
             httpd.client_open_queue = self.client_open_queue
 
@@ -147,6 +161,7 @@ class MobileConnectionServer(QObject):
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
             print(f"HTTPS server running at https://{self.local_ip}:{self.port}")
+            print(f"Server is listening on all network interfaces (0.0.0.0:{self.port})")
             httpd.serve_forever()
 
         self.request_queue = queue.Queue()

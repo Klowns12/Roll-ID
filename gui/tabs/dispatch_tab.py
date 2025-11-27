@@ -184,7 +184,7 @@ class DispatchTab(QWidget):
             except Exception:
                 pass
         self.mobile_server = MobileConnectionServer()
-        self.mobile_server.client_opened.connect(self.on_mobile_scan)
+        self.mobile_server.client_opened.connect(self.on_mobile_client_opened)
         self.mobile_server.scan_received.connect(self.on_mobile_scan_received)
         self.mobile_server.start()
 
@@ -250,15 +250,21 @@ class DispatchTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error showing QR code: {str(e)}")
 
-    def on_mobile_scan(self):
-        print("client opening")
-        self.mobile_qr_dialog.accept()
+    def on_mobile_client_opened(self):
+        """เรียกเมื่อ mobile client เปิดหน้าเว็บ"""
+        print("Mobile client opened")
+        # ปิด QR dialog ถ้ามีและยังเปิดอยู่
+        if hasattr(self, 'mobile_qr_dialog') and self.mobile_qr_dialog:
+            try:
+                self.mobile_qr_dialog.accept()
+            except Exception as e:
+                print(f"Error closing QR dialog: {e}")
         
     def on_mobile_scan_received(self, scan_data):
+        """เรียกเมื่อรับข้อมูลจากการสแกน"""
         try:
-            print(f"recieve : {scan_data}")
-    
-
+            print(f"Received scan data: {scan_data}")
+            self.roll_id_input.setText(scan_data)
             self.dispatch(scan_data)
         except Exception as e:
             print(f"Error handling mobile scan: {e}")

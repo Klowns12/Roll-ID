@@ -206,18 +206,18 @@ class MasterSuppliersManager:
                 
                 # ค้นหาจาก MasterDATA
                 if self.master_data is not None:
-                    master_results = self.master_data[
-                        (self.master_data['pdt_code'].astype(str).str.contains(search_query, case=False, na=False)) |
-                        (self.master_data['Location'].astype(str).str.contains(search_query, case=False, na=False))
-                    ]
+                    mask = self.master_data['pdt_code'].astype(str).str.contains(search_query, case=False, na=False)
+                    if 'Location' in self.master_data.columns:
+                        mask = mask | self.master_data['Location'].astype(str).str.contains(search_query, case=False, na=False)
+                    master_results = self.master_data[mask]
                     code_matches.extend(master_results.to_dict('records'))
                 
                 # ค้นหาจาก Suppliers.csv
                 if self.suppliers_data is not None:
-                    suppliers_results = self.suppliers_data[
-                        (self.suppliers_data['Code'].astype(str).str.contains(search_query, case=False, na=False)) |
-                        (self.suppliers_data['Location'].astype(str).str.contains(search_query, case=False, na=False))
-                    ]
+                    mask = self.suppliers_data['Code'].astype(str).str.contains(search_query, case=False, na=False)
+                    if 'Location' in self.suppliers_data.columns:
+                        mask = mask | self.suppliers_data['Location'].astype(str).str.contains(search_query, case=False, na=False)
+                    suppliers_results = self.suppliers_data[mask]
                     code_matches.extend(suppliers_results.to_dict('records'))
                 
                 # ค้นหาจาก Master_Dispatch.csv
@@ -252,10 +252,9 @@ class MasterSuppliersManager:
                 
                 if search_query.strip():
                     # ค้นหา Code, Location, Roll ID, Lot
-                    mask = (
-                        master_results['pdt_code'].astype(str).str.contains(search_query, case=False, na=False) |
-                        master_results['Location'].astype(str).str.contains(search_query, case=False, na=False)
-                    )
+                    mask = master_results['pdt_code'].astype(str).str.contains(search_query, case=False, na=False)
+                    if 'Location' in master_results.columns:
+                        mask = mask | master_results['Location'].astype(str).str.contains(search_query, case=False, na=False)
                     master_results = master_results[mask]
                 
                 results.extend(master_results.to_dict('records'))
@@ -272,10 +271,9 @@ class MasterSuppliersManager:
                 
                 if search_query.strip():
                     # ค้นหา Code, Location
-                    mask = (
-                        suppliers_results['Code'].astype(str).str.contains(search_query, case=False, na=False) |
-                        suppliers_results['Location'].astype(str).str.contains(search_query, case=False, na=False)
-                    )
+                    mask = suppliers_results['Code'].astype(str).str.contains(search_query, case=False, na=False)
+                    if 'Location' in suppliers_results.columns:
+                        mask = mask | suppliers_results['Location'].astype(str).str.contains(search_query, case=False, na=False)
                     suppliers_results = suppliers_results[mask]
                 
                 results.extend(suppliers_results.to_dict('records'))

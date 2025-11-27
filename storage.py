@@ -230,11 +230,25 @@ class StorageManager:
         return True
 
     def get_master_data_count(self) -> int:
-        """นับจำนวนแถวใน master_products ทั้งหมด"""
-        with self._connect() as conn:
-            cur = conn.execute("SELECT COUNT(*) FROM master_products")
-            count = cur.fetchone()[0]
-        return count
+        """นับจำนวนแถวใน MasterDATA.csv"""
+        try:
+            csv_path = self.data_dir.parent / "MasterDATA.csv"
+            if not csv_path.exists():
+                return 0
+            
+            # Read CSV using pandas to handle encoding correctly (similar to master_tab.py)
+            import pandas as pd
+            try:
+                df = pd.read_csv(csv_path, encoding='utf-8-sig')
+            except UnicodeDecodeError:
+                df = pd.read_csv(csv_path, encoding='windows-1252')
+            except Exception:
+                return 0
+                
+            return len(df)
+        except Exception as e:
+            print(f"Error reading master data count: {e}")
+            return 0
 
     def get_roll_count(self, roll_id: Optional[str] = None) -> int:
         """นับจำนวนแถวใน rolls (ทั้งหมด หรือเฉพาะ roll_id)"""
