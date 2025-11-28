@@ -407,10 +407,15 @@ class MasterSuppliersManager:
             # Roll ID: จาก roll_id (storage.db)
             result['Roll ID'] = rolls_row.get('roll_id', '') if rolls_row else row.get('roll_id', '')
             
-            # Exist. Qty: จาก Suppliers.csv (แสดงเฉพาะเมื่อค้นหาด้วย Suppliers)
+            # Exist. Qty: จาก Suppliers.csv (ดึงเสมอถ้ามีข้อมูล)
+            result['QTY'] = suppliers_row.get('QTY', '') if suppliers_row else row.get('QTY', '')
+            result['ม้วนเต็ม'] = suppliers_row.get('ม้วนเต็ม', '') if suppliers_row else row.get('ม้วนเต็ม', '')
+            result['เศษ'] = suppliers_row.get('เศษ', '') if suppliers_row else row.get('เศษ', '')
+            
+            # Legacy support for existing logic (optional)
             if search_type == "supplier":
-                result['Exist. Qty'] = suppliers_row.get('QTY', '') if suppliers_row else row.get('QTY', '')
-                result['เศษ.QTY'] = suppliers_row.get('เศษ', '') if suppliers_row else row.get('เศษ', '')
+                result['Exist. Qty'] = result['QTY']
+                result['เศษ.QTY'] = result['เศษ']
             
             return result
             

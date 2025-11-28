@@ -2,7 +2,8 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QLineEdit, QComboBox, QPushButton, QMessageBox, QTabWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QLabel, QDoubleSpinBox,
-    QDateEdit, QCheckBox, QFileDialog, QInputDialog, QStyle, QDialog, QSpinBox
+    QDateEdit, QCheckBox, QFileDialog, QInputDialog, QStyle, QDialog, QSpinBox,
+    QCompleter
 )
 from PySide6.QtCore import Qt, QDate, Signal as pyqtSignal, QObject
 from PySide6.QtGui import QIntValidator, QDoubleValidator, QPixmap
@@ -42,6 +43,7 @@ class ReceiveTab(QWidget):
         self.roll_id_generator = RollIDGenerator(data_dir)
         
         self.setup_ui()
+        self.setup_autocomplete()  # Setup autocomplete after UI is created
         # self.load_master_data()  # Commented out because master_tab is not created
         
         # Connect signals
@@ -165,6 +167,74 @@ class ReceiveTab(QWidget):
         layout.addStretch()
         
         return tab
+    
+    def setup_autocomplete(self):
+        """Setup autocomplete for input fields"""
+        try:
+            # Get data directory
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+            
+            # Load MasterDATA.csv
+            master_csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "MasterDATA.csv")
+            if os.path.exists(master_csv_path):
+                try:
+                    master_df = pd.read_csv(master_csv_path, encoding='utf-8-sig')
+                except UnicodeDecodeError:
+                    master_df = pd.read_csv(master_csv_path, encoding='windows-1252')
+                
+                # SubPartCode autocomplete (from spl_part_code column)
+                if 'spl_part_code' in master_df.columns:
+                    subpart_codes = master_df['spl_part_code'].dropna().astype(str).unique().tolist()
+                    subpart_completer = QCompleter(subpart_codes)
+                    subpart_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+                    self.manual_subpart_code.setCompleter(subpart_completer)
+                
+                # SupCode autocomplete (from spl_code column)
+                if 'spl_code' in master_df.columns:
+                    sup_codes = master_df['spl_code'].dropna().astype(str).unique().tolist()
+                    sup_completer = QCompleter(sup_codes)
+                    sup_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+                    self.manual_sup_code.setCompleter(sup_completer)
+                
+                # Description autocomplete (from pdt_name column)
+                if 'pdt_name' in master_df.columns:
+                    descriptions = master_df['pdt_name'].dropna().astype(str).unique().tolist()
+                    desc_completer = QCompleter(descriptions)
+                    desc_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+                    self.manual_description.setCompleter(desc_completer)
+            
+            # Load Suppliers.csv
+            suppliers_csv_path = os.path.join(data_dir, "Suppliers.csv")
+            if os.path.exists(suppliers_csv_path):
+                try:
+                    suppliers_df = pd.read_csv(suppliers_csv_path, encoding='utf-8-sig')
+                except UnicodeDecodeError:
+                    suppliers_df = pd.read_csv(suppliers_csv_path, encoding='windows-1252')
+                
+                # Remove header rows
+                suppliers_df = suppliers_df[
+                    (suppliers_df.iloc[:, 0] != 'Item') & 
+                    (suppliers_df.iloc[:, 0] != 'Suppliers') &
+                    (suppliers_df.iloc[:, 0].notna())
+                ]
+                
+                # Supplier Name autocomplete (from Suppliers column or Unnamed: 1)
+                if 'Suppliers' in suppliers_df.columns:
+                    supplier_names = suppliers_df['Suppliers'].dropna().astype(str).unique().tolist()
+                elif 'Unnamed: 1' in suppliers_df.columns:
+                    supplier_names = suppliers_df['Unnamed: 1'].dropna().astype(str).unique().tolist()
+                else:
+                    supplier_names = []
+                
+                if supplier_names:
+                    supplier_completer = QCompleter(supplier_names)
+                    supplier_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+                    self.manual_supplier_name.setCompleter(supplier_completer)
+            
+            print("Autocomplete setup completed successfully")
+            
+        except Exception as e:
+            print(f"Error setting up autocomplete: {e}")
     
     # def create_master_tab(self):
     #     """Create the 'From Master' tab"""

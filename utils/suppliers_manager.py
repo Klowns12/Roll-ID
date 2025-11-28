@@ -52,18 +52,25 @@ class SuppliersManager:
     def search_by_code(self, code: str) -> Optional[Dict]:
         """ค้นหา Suppliers ตามรหัส (Code)"""
         if self.data is None or len(self.data) == 0:
+            print(f"DEBUG: No data loaded in suppliers_manager")
             return None
         
         try:
             # ค้นหาในคอลัมน์ที่ 2 (Code)
             code_col = self.data.columns[2]
+            print(f"DEBUG: Searching for code '{code}' in column '{code_col}'")
+            print(f"DEBUG: Available codes: {self.data[code_col].head().tolist()}")
             result = self.data[self.data[code_col].astype(str).str.strip() == code.strip()]
             
             if len(result) > 0:
+                print(f"DEBUG: Found match for code '{code}'")
                 return result.iloc[0].to_dict()
+            print(f"DEBUG: No match found for code '{code}'")
             return None
         except Exception as e:
             print(f"Error searching by code: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def get_all_suppliers(self) -> List[str]:
