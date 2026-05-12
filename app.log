@@ -1,0 +1,425 @@
+2026-05-11 19:37:02,327 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 19:37:02,329 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 19:37:02,338 - __main__ - INFO - Storage initialized successfully
+2026-05-11 19:37:02,408 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 19:37:02,409 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 19:37:02,409 - __main__ - INFO - Showing main window without login
+2026-05-11 19:37:02,565 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 19:37:02,570 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 19:37:02,570 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 19:46:51,809 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:05:10,980 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:05:10,980 - __main__ - INFO - Stopping API server...
+2026-05-11 20:05:10,980 - api_server - INFO - Stopping API server...
+2026-05-11 20:05:10,981 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:05:10,981 - api_server - INFO - API server stopped
+2026-05-11 20:05:10,981 - __main__ - INFO - API server stopped
+2026-05-11 20:05:10,981 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:05:15,812 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:05:15,813 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:05:15,815 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:05:15,855 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:05:15,855 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:05:15,855 - __main__ - INFO - Showing main window without login
+2026-05-11 20:05:16,070 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:05:16,070 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:05:16,078 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:05:48,463 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:08:00,984 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:08:00,984 - __main__ - INFO - Stopping API server...
+2026-05-11 20:08:00,984 - api_server - INFO - Stopping API server...
+2026-05-11 20:08:00,985 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:08:00,985 - api_server - INFO - API server stopped
+2026-05-11 20:08:00,985 - __main__ - INFO - API server stopped
+2026-05-11 20:08:00,985 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:08:26,040 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:08:26,041 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:08:26,043 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:08:26,076 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:08:26,077 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:08:26,077 - __main__ - INFO - Showing main window without login
+2026-05-11 20:08:26,190 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:08:26,190 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:08:26,194 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:08:39,986 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:10:23,510 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:10:23,510 - __main__ - INFO - Stopping API server...
+2026-05-11 20:10:23,510 - api_server - INFO - Stopping API server...
+2026-05-11 20:10:23,510 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:10:23,510 - api_server - INFO - API server stopped
+2026-05-11 20:10:23,511 - __main__ - INFO - API server stopped
+2026-05-11 20:10:23,511 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:13:21,026 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:13:21,027 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:13:21,029 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:13:21,065 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:13:21,066 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:13:21,066 - __main__ - INFO - Showing main window without login
+2026-05-11 20:13:21,177 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:13:21,177 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:13:21,181 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:13:22,422 - __main__ - ERROR - Error in show_main_window_without_login: 'ReceiveTab' object has no attribute 'scan_received'
+2026-05-11 20:13:49,025 - __main__ - CRITICAL - Unhandled exception: Traceback (most recent call last):
+
+  File "C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\utils\mobile_connection_server.py", line 185, in process_queue
+    def process_queue(self):
+    
+
+KeyboardInterrupt
+
+2026-05-11 20:13:51,592 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:13:51,592 - __main__ - INFO - Stopping API server...
+2026-05-11 20:13:51,592 - api_server - INFO - Stopping API server...
+2026-05-11 20:13:51,593 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:13:51,593 - api_server - INFO - API server stopped
+2026-05-11 20:13:51,593 - __main__ - INFO - API server stopped
+2026-05-11 20:13:51,593 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:13:56,012 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:13:56,013 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:13:56,015 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:13:56,054 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:13:56,054 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:13:56,054 - __main__ - INFO - Showing main window without login
+2026-05-11 20:13:56,177 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:13:56,179 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:13:56,189 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:13:57,562 - __main__ - ERROR - Error in show_main_window_without_login: 'ReceiveTab' object has no attribute 'scan_received'
+2026-05-11 20:14:04,651 - __main__ - CRITICAL - Unhandled exception: Traceback (most recent call last):
+
+  File "C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\utils\mobile_connection_server.py", line 185, in process_queue
+    def process_queue(self):
+    
+
+KeyboardInterrupt
+
+2026-05-11 20:14:13,182 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:14:13,182 - __main__ - INFO - Stopping API server...
+2026-05-11 20:14:13,182 - api_server - INFO - Stopping API server...
+2026-05-11 20:14:13,182 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:14:13,183 - api_server - INFO - API server stopped
+2026-05-11 20:14:13,183 - __main__ - INFO - API server stopped
+2026-05-11 20:14:13,183 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:18:33,284 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:18:33,285 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:18:33,286 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:18:33,329 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:18:33,329 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:18:33,330 - __main__ - INFO - Showing main window without login
+2026-05-11 20:18:33,439 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:18:33,442 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:18:33,450 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:18:48,900 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:25:26,868 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:25:26,869 - __main__ - INFO - Stopping API server...
+2026-05-11 20:25:26,869 - api_server - INFO - Stopping API server...
+2026-05-11 20:25:26,869 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:25:26,869 - api_server - INFO - API server stopped
+2026-05-11 20:25:26,869 - __main__ - INFO - API server stopped
+2026-05-11 20:25:26,869 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:25:34,655 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:25:34,659 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:25:34,660 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:25:34,703 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:25:34,703 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:25:34,704 - __main__ - INFO - Showing main window without login
+2026-05-11 20:25:34,803 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:25:34,803 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:25:34,810 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:25:35,068 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: , field: Code
+2026-05-11 20:25:35,069 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:25:56,203 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:26:25,709 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:26:25,710 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:26:27,236 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:26:27,237 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:27:23,890 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:27:23,891 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:27:24,937 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:27:24,938 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:30:36,496 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:30:36,496 - __main__ - INFO - Stopping API server...
+2026-05-11 20:30:36,496 - api_server - INFO - Stopping API server...
+2026-05-11 20:30:36,497 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:30:36,497 - api_server - INFO - API server stopped
+2026-05-11 20:30:36,497 - __main__ - INFO - API server stopped
+2026-05-11 20:30:36,497 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:30:48,955 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:30:48,957 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:30:48,958 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:30:49,001 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:30:49,001 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:30:49,002 - __main__ - INFO - Showing main window without login
+2026-05-11 20:30:49,104 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:30:49,105 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:30:49,111 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:30:49,376 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: , field: Code
+2026-05-11 20:30:49,378 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:30:49,378 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Code
+2026-05-11 20:30:49,382 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:30:49,382 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:30:50,028 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:30:50,028 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:30:50,058 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:30:54,060 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Roll ID
+2026-05-11 20:30:54,063 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:30:54,063 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:30:54,776 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:30:54,777 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:30:54,792 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:30:58,637 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:30:58,648 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:30:58,649 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:30:58,656 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 2
+2026-05-11 20:30:58,656 - gui.tabs.statistics_tab - INFO - Displaying 2 rows
+2026-05-11 20:30:58,658 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 2
+2026-05-11 20:31:03,304 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:31:03,305 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:31:03,305 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:03,315 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:03,315 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:03,319 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:03,320 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:03,320 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:04,258 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:31:04,259 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:31:04,259 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:04,273 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:04,273 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:04,276 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:04,276 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:04,277 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:07,593 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R00003, search_field: Roll ID
+2026-05-11 20:31:07,603 - gui.tabs.statistics_tab - INFO - Found 3 supplier records
+2026-05-11 20:31:07,603 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:07,611 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:07,611 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:08,144 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R0000, search_field: Roll ID
+2026-05-11 20:31:08,155 - gui.tabs.statistics_tab - INFO - Found 27 supplier records
+2026-05-11 20:31:08,155 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:08,227 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:08,227 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:08,228 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000, search_field: Roll ID
+2026-05-11 20:31:08,241 - gui.tabs.statistics_tab - INFO - Found 27 supplier records
+2026-05-11 20:31:08,241 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:08,312 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:08,313 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:08,315 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R00, search_field: Roll ID
+2026-05-11 20:31:08,328 - gui.tabs.statistics_tab - INFO - Found 27 supplier records
+2026-05-11 20:31:08,328 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:08,396 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:08,397 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:08,399 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R0, search_field: Roll ID
+2026-05-11 20:31:08,410 - gui.tabs.statistics_tab - INFO - Found 27 supplier records
+2026-05-11 20:31:08,410 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:08,478 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:08,478 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:08,480 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R, search_field: Roll ID
+2026-05-11 20:31:08,565 - gui.tabs.statistics_tab - INFO - Found 4372 supplier records
+2026-05-11 20:31:08,565 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:19,102 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 0
+2026-05-11 20:31:19,103 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 0
+2026-05-11 20:31:19,166 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Roll ID
+2026-05-11 20:31:19,169 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:31:19,170 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:19,831 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 266
+2026-05-11 20:31:19,831 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:31:19,847 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 266
+2026-05-11 20:31:23,764 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:23,776 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:23,776 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:23,779 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:23,779 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:23,782 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:25,722 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:31:25,723 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:31:25,723 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:25,733 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:25,733 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:25,736 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:25,737 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:25,737 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:39,197 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:31:43,249 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Roll ID
+2026-05-11 20:31:43,253 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:31:43,253 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:43,867 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 266
+2026-05-11 20:31:43,867 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:31:43,885 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 266
+2026-05-11 20:31:46,223 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:46,232 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:46,232 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:46,235 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:46,236 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:46,239 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:47,681 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:31:47,682 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:31:47,682 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:31:47,692 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:31:47,693 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:31:47,696 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:31:47,696 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:31:47,697 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:31:49,630 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:31:49,630 - __main__ - INFO - Stopping API server...
+2026-05-11 20:31:49,630 - api_server - INFO - Stopping API server...
+2026-05-11 20:31:49,630 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:31:49,630 - api_server - INFO - API server stopped
+2026-05-11 20:31:49,631 - __main__ - INFO - API server stopped
+2026-05-11 20:31:49,631 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:32:14,696 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:32:14,698 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:32:14,700 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:32:14,736 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:32:14,736 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:32:14,737 - __main__ - INFO - Showing main window without login
+2026-05-11 20:32:14,947 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:32:14,947 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:32:14,947 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:32:15,182 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: , field: Code
+2026-05-11 20:32:15,184 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:32:15,184 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Code
+2026-05-11 20:32:15,187 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:32:15,187 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:32:15,813 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:32:15,813 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:32:15,837 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:32:20,793 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Roll ID
+2026-05-11 20:32:20,795 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:32:20,795 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:32:21,443 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:32:21,443 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:32:21,457 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:32:22,386 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:32:22,403 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:32:22,403 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:32:22,406 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 2
+2026-05-11 20:32:22,406 - gui.tabs.statistics_tab - INFO - Displaying 2 rows
+2026-05-11 20:32:22,410 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 2
+2026-05-11 20:32:30,391 - gui.tabs.statistics_tab - INFO - Loading statistics data - keyword: R000030, field: Roll ID
+2026-05-11 20:32:30,392 - gui.tabs.statistics_tab - INFO - Loaded 0 rolls from database
+2026-05-11 20:32:30,392 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:32:30,402 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:32:30,402 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 0, rolls_by_code: 0
+2026-05-11 20:32:30,405 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:32:30,405 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:32:30,406 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:33:46,663 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:33:46,663 - __main__ - INFO - Stopping API server...
+2026-05-11 20:33:46,664 - api_server - INFO - Stopping API server...
+2026-05-11 20:33:46,664 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:33:46,664 - api_server - INFO - API server stopped
+2026-05-11 20:33:46,664 - __main__ - INFO - API server stopped
+2026-05-11 20:33:46,664 - __main__ - INFO - Application cleanup complete
+2026-05-11 20:36:48,456 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-11 20:36:48,457 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-11 20:36:48,459 - __main__ - INFO - Storage initialized successfully
+2026-05-11 20:36:48,493 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-11 20:36:48,493 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-11 20:36:48,493 - __main__ - INFO - Showing main window without login
+2026-05-11 20:36:48,667 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-11 20:36:48,668 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-11 20:36:48,672 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-11 20:36:48,962 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:36:48,963 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Code
+2026-05-11 20:36:48,966 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:36:48,966 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:36:49,548 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:36:49,548 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:36:49,564 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:36:52,490 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Roll ID
+2026-05-11 20:36:52,493 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-11 20:36:52,493 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:36:53,052 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-11 20:36:53,052 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-11 20:36:53,066 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-11 20:37:00,459 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:37:00,471 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:37:00,471 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:37:00,475 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 2
+2026-05-11 20:37:00,475 - gui.tabs.statistics_tab - INFO - Displaying 2 rows
+2026-05-11 20:37:00,477 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 2
+2026-05-11 20:37:02,113 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:37:02,113 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000030, search_field: Roll ID
+2026-05-11 20:37:02,123 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:37:02,124 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:37:02,127 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 2
+2026-05-11 20:37:02,128 - gui.tabs.statistics_tab - INFO - Displaying 2 rows
+2026-05-11 20:37:02,129 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 2
+2026-05-11 20:37:11,835 - __main__ - INFO - User admin logged in successfully
+2026-05-11 20:37:28,708 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000031, search_field: Roll ID
+2026-05-11 20:37:28,718 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:37:28,718 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:37:28,722 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:37:28,722 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:37:28,723 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:37:30,466 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:37:30,466 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000031, search_field: Roll ID
+2026-05-11 20:37:30,476 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:37:30,476 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:37:30,479 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:37:30,480 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:37:30,480 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:37:45,690 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-11 20:37:45,690 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: R000031, search_field: Roll ID
+2026-05-11 20:37:45,701 - gui.tabs.statistics_tab - INFO - Found 1 supplier records
+2026-05-11 20:37:45,701 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-11 20:37:45,705 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 1
+2026-05-11 20:37:45,705 - gui.tabs.statistics_tab - INFO - Displaying 1 rows
+2026-05-11 20:37:45,706 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 1
+2026-05-11 20:55:01,600 - __main__ - INFO - Cleaning up application resources...
+2026-05-11 20:55:01,600 - __main__ - INFO - Stopping API server...
+2026-05-11 20:55:01,600 - api_server - INFO - Stopping API server...
+2026-05-11 20:55:01,601 - api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-11 20:55:01,601 - api_server - INFO - API server stopped
+2026-05-11 20:55:01,601 - __main__ - INFO - API server stopped
+2026-05-11 20:55:01,601 - __main__ - INFO - Application cleanup complete
+2026-05-12 14:01:34,860 - __main__ - INFO - Application icon path: C:\Users\Prawi\OneDrive\Desktop\Anthovai-Project\Roll-ID\assets\fabric.png
+2026-05-12 14:01:34,864 - __main__ - INFO - Authentication manager initialized successfully
+2026-05-12 14:01:34,883 - __main__ - INFO - Storage initialized successfully
+2026-05-12 14:01:34,996 - api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-12 14:01:34,997 - __main__ - INFO - API server started on 0.0.0.0:5000
+2026-05-12 14:01:34,997 - __main__ - INFO - Showing main window without login
+2026-05-12 14:01:35,342 - gui.tabs.receive_tab - INFO - Autocomplete setup completed successfully
+2026-05-12 14:01:35,347 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.108:5000
+2026-05-12 14:01:35,348 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-05-12 14:01:35,836 - gui.tabs.statistics_tab - INFO - Loaded 27 rolls from database
+2026-05-12 14:01:35,836 - gui.tabs.statistics_tab - INFO - Display suppliers data - supplier_name: , search_query: , search_field: Code
+2026-05-12 14:01:35,844 - gui.tabs.statistics_tab - INFO - Found 266 supplier records
+2026-05-12 14:01:35,845 - gui.tabs.statistics_tab - INFO - Prepared roll lookups - roll_by_id: 27, rolls_by_code: 10
+2026-05-12 14:01:37,066 - gui.tabs.statistics_tab - INFO - Loading more data - displayed_count: 0, total_rows: 267
+2026-05-12 14:01:37,066 - gui.tabs.statistics_tab - INFO - Displaying 100 rows
+2026-05-12 14:01:37,109 - gui.tabs.statistics_tab - INFO - Finished displaying suppliers data - total rows: 267
+2026-05-12 14:02:07,766 - __main__ - INFO - User admin logged in successfully

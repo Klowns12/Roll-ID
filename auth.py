@@ -5,10 +5,15 @@ Handles user authentication, role management, and password hashing
 
 import json
 import hashlib
+import logging
 import os
+import time
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
+
+logger = logging.getLogger(__name__)
 
 class User:
     """User class representing a system user"""
@@ -56,10 +61,12 @@ class AuthManager:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
         self.users_file = self.data_dir / "users.json"
+        self.lock_file = self.data_dir / "users.json.lock"
         self.users: Dict[str, User] = {}
         self.current_user: Optional[User] = None
+        self._thread_lock = threading.Lock()  # Thread-level lock for in-memory operations
         self.load_users()
-        
+
         # Create default admin user if no users exist
         if not self.users:
             self.create_default_admin()
@@ -68,31 +75,64 @@ class AuthManager:
         """Hash password using SHA-256"""
         return hashlib.sha256(password.encode()).hexdigest()
     
-    def load_users(self):
-        """Load users from JSON file"""
-        if self.users_file.exists():
+    def _acquire_lock(self, timeout: int = 10) -> bool:
+        """Acquire file lock with timeout"""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
             try:
-                with open(self.users_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.users = {
-                        username: User.from_dict(user_data)
-                        for username, user_data in data.items()
-                    }
-            except Exception as e:
-                print(f"Error loading users: {e}")
-                self.users = {}
-    
-    def save_users(self):
-        """Save users to JSON file"""
+                # Try to create lock file exclusively
+                self.lock_file.touch(exist_ok=False)
+                return True
+            except FileExistsError:
+                # Lock file exists, wait and retry
+                time.sleep(0.1)
+        return False
+
+    def _release_lock(self):
+        """Release file lock"""
         try:
-            data = {
-                username: user.to_dict()
-                for username, user in self.users.items()
-            }
-            with open(self.users_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving users: {e}")
+            if self.lock_file.exists():
+                self.lock_file.unlink()
+        except Exception:
+            pass
+
+    def load_users(self):
+        """Load users from JSON file with file locking"""
+        with self._thread_lock:
+            if self.users_file.exists():
+                try:
+                    self._acquire_lock()
+                    with open(self.users_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        self.users = {
+                            username: User.from_dict(user_data)
+                            for username, user_data in data.items()
+                        }
+                except Exception as e:
+                    logger.error(f"Error loading users: {e}")
+                    self.users = {}
+                finally:
+                    self._release_lock()
+
+    def save_users(self):
+        """Save users to JSON file with file locking"""
+        with self._thread_lock:
+            try:
+                self._acquire_lock()
+                data = {
+                    username: user.to_dict()
+                    for username, user in self.users.items()
+                }
+                # Write to temp file first, then rename for atomic operation
+                temp_file = self.users_file.with_suffix('.tmp')
+                with open(temp_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                # Atomic rename
+                temp_file.replace(self.users_file)
+            except Exception as e:
+                logger.error(f"Error saving users: {e}")
+            finally:
+                self._release_lock()
     
     def create_default_admin(self):
         """Create default admin user"""
@@ -104,7 +144,7 @@ class AuthManager:
         )
         self.users['admin'] = admin_user
         self.save_users()
-        print("Default admin user created: username='admin', password='admin'")
+        logger.warning("Default admin user created: username='admin', password='admin'")
     
     def authenticate(self, username: str, password: str) -> bool:
         """Authenticate user with username and password"""

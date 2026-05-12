@@ -1,12 +1,15 @@
 import os
 import json
 import sqlite3
+import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
 from dataclasses import dataclass, asdict
 import threading
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------
@@ -115,6 +118,12 @@ class StorageManager:
             )
             """)
 
+            # Create indexes for rolls table
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_rolls_sku ON rolls(sku)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_rolls_status ON rolls(status)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_rolls_location ON rolls(location)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_rolls_lot ON rolls(lot)")
+
             # Table: Master Products
             cur.execute("""
             CREATE TABLE IF NOT EXISTS master_products (
@@ -136,15 +145,16 @@ class StorageManager:
                 user TEXT
             )
             """)
+
+            # Create indexes for logs table (ต้องสร้างหลังจาก table ถูกสร้างแล้ว)
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_logs_action ON logs(action)")
             conn.commit()
 
     # ----------------------------------------------------------------
     # Roll Operations
     # ----------------------------------------------------------------
     def add_roll(self, roll: Roll) -> bool:
-        print('-------- before add roll data ----------')
-        print(roll)
-        print('-----------------')
         with self._connect() as conn:
             cur = conn.cursor()
             try:
@@ -200,8 +210,20 @@ class StorageManager:
     def update_roll(self, roll_id: str, **updates) -> bool:
         if not updates:
             return False
-        fields = ", ".join([f"{k}=?" for k in updates.keys()])
-        values = list(updates.values()) + [roll_id]
+        # Whitelist of allowed columns to prevent SQL injection
+        allowed_columns = {
+            'sku', 'lot', 'current_length', 'original_length', 'location',
+            'grade', 'date_received', 'marks_no', 'status', 'invoice_number',
+            'po_number', 'spl_name', 'type_of_roll', 'unit_type', 'scrap_qty',
+            'specification', 'colour', 'packing_unit', 'pdt_code', 'pdt_name',
+            'subpart_code', 'sup_code', 'width'
+        }
+        # Filter updates to only include allowed columns
+        filtered_updates = {k: v for k, v in updates.items() if k in allowed_columns}
+        if not filtered_updates:
+            return False
+        fields = ", ".join([f"{k}=?" for k in filtered_updates.keys()])
+        values = list(filtered_updates.values()) + [roll_id]
         with self._connect() as conn:
             conn.execute(f"UPDATE rolls SET {fields} WHERE roll_id = ?", values)
             conn.commit()
@@ -242,12 +264,13 @@ class StorageManager:
                 df = pd.read_csv(csv_path, encoding='utf-8-sig')
             except UnicodeDecodeError:
                 df = pd.read_csv(csv_path, encoding='windows-1252')
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error reading master data count: {e}")
                 return 0
                 
             return len(df)
         except Exception as e:
-            print(f"Error reading master data count: {e}")
+            logger.error(f"Error reading master data count: {e}")
             return 0
 
     def get_roll_count(self, roll_id: Optional[str] = None) -> int:
@@ -336,8 +359,23 @@ class StorageManager:
         return log_id
 
     def get_logs(self, limit: int = 100, **filters) -> List[LogEntry]:
-        query = "SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?"
-        params = [limit]
+        # Build query with SQL filters for better performance
+        query = "SELECT * FROM logs"
+        params = []
+
+        if filters:
+            clauses = []
+            if "action" in filters:
+                clauses.append("action = ?")
+                params.append(filters["action"])
+            if "roll_id" in filters:
+                clauses.append("roll_id = ?")
+                params.append(filters["roll_id"])
+            if clauses:
+                query += " WHERE " + " AND ".join(clauses)
+
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
 
         with self._connect() as conn:
             cur = conn.execute(query, params)
@@ -350,10 +388,11 @@ class StorageManager:
             data["details"] = json.loads(data["details"])
             logs.append(LogEntry(**data))
 
-        # filter in Python (optional)
-        if filters:
+        # Only filter in Python for non-indexed fields
+        remaining_filters = {k: v for k, v in filters.items() if k not in ["action", "roll_id"]}
+        if remaining_filters:
             def match(log: LogEntry):
-                for k, v in filters.items():
+                for k, v in remaining_filters.items():
                     if getattr(log, k, None) != v and log.details.get(k) != v:
                         return False
                 return True
@@ -363,14 +402,70 @@ class StorageManager:
     # ----------------------------------------------------------------
     # Search Operations
     # ----------------------------------------------------------------
+    def get_all_rolls(self) -> List[Roll]:
+        """ดึง rolls ทั้งหมดจาก database"""
+        with self._connect() as conn:
+            cur = conn.execute("SELECT * FROM rolls")
+            rows = cur.fetchall()
+            keys = [desc[0] for desc in cur.description]
+        return [Roll(**dict(zip(keys, row))) for row in rows]
+
     def search_rolls(self, **filters) -> List[Roll]:
+        # Whitelist of allowed columns to prevent SQL injection
+        allowed_columns = {
+            'sku', 'lot', 'current_length', 'original_length', 'location',
+            'grade', 'date_received', 'marks_no', 'status', 'invoice_number',
+            'po_number', 'spl_name', 'type_of_roll', 'unit_type', 'scrap_qty',
+            'specification', 'colour', 'packing_unit', 'pdt_code', 'pdt_name',
+            'subpart_code', 'sup_code', 'width', 'roll_id'
+        }
         query = "SELECT * FROM rolls"
         clauses, params = [], []
         for k, v in filters.items():
-            clauses.append(f"{k} LIKE ?")
-            params.append(f"%{v}%")
+            if k in allowed_columns:
+                clauses.append(f"{k} LIKE ?")
+                params.append(f"%{v}%")
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            rows = cur.fetchall()
+            keys = [desc[0] for desc in cur.description]
+        return [Roll(**dict(zip(keys, row))) for row in rows]
+
+    def search_rolls_by_field(self, field: str, keyword: str) -> List[Roll]:
+        """ค้นหา rolls ตาม field เฉพาะ เพื่อประสิทธิภาพด้วย database index (exact match)"""
+        if not keyword or not keyword.strip():
+            return self.get_all_rolls()
+
+        # Map UI field names เป็น database column names (รองรับทั้ง uppercase และ lowercase)
+        field_map = {
+            'roll_id': 'roll_id',
+            'ROLL ID': 'roll_id',
+            'sku': 'sku',
+            'SKU': 'sku',
+            'pdt_code': 'pdt_code',
+            'PDT_CODE': 'pdt_code',
+            'code': 'sku',      # alias: Code ค้นหาจาก sku
+            'Code': 'sku',
+            'CODE': 'sku',
+            'location': 'location',
+            'Location': 'location',
+            'LOCATION': 'location',
+            'lot': 'lot',
+            'Lot': 'lot',
+            'LOT': 'lot',
+        }
+
+        db_field = field_map.get(field)
+        if not db_field:
+            # Fallback: ค้นหาทุก field ที่เกี่ยวข้อง
+            return self.search_rolls(sku=f"%{keyword}%")
+
+        # Exact match (เท่านั้น ไม่ใช่ partial match)
+        query = f"SELECT * FROM rolls WHERE {db_field} = ?"
+        params = [keyword]
 
         with self._connect() as conn:
             cur = conn.execute(query, params)

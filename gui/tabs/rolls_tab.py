@@ -385,11 +385,11 @@ class RollsTab(QWidget):
             should_show = True
             
             # Get row data
-            sku = self.table.item(row, 2).text().lower()
-            status = self.table.item(row, 7).text().lower()
-            location = self.table.item(row, 6).text().lower()
-            roll_id = self.table.item(row, 1).text().lower()
-            lot = self.table.item(row, 3).text().lower()
+            sku = self.table.item(row, 2).text().lower()  # Code column
+            status = self.table.item(row, 9).text().lower()  # Status column
+            location = self.table.item(row, 8).text().lower()  # Location column
+            roll_id = self.table.item(row, 1).text().lower()  # Roll ID column
+            lot = self.table.item(row, 7).text().lower()  # Lot No. column
             
             # Apply filters
             if sku_filter and sku_filter not in sku:
@@ -470,8 +470,6 @@ class RollsTab(QWidget):
         if not roll:
             QMessageBox.warning(self, "Error", "Selected roll not found!")
             return
-        print("------- role ----")
-        print(roll)
         # Convert roll to dict for preview dialog
         # roll_data = {
         #     'roll_id': roll.roll_id,
@@ -517,12 +515,14 @@ class RollsTab(QWidget):
                 if not self.table.isRowHidden(row):
                     rows.append([
                         self.table.item(row, 1).text(),  # Roll ID
-                        self.table.item(row, 2).text(),  # SKU
-                        self.table.item(row, 3).text(),  # Lot
-                        self.table.item(row, 4).text(),  # Current Length
-                        self.table.item(row, 5).text(),  # Original Length
-                        self.table.item(row, 6).text(),  # Location
-                        self.table.item(row, 7).text()   # Status
+                        self.table.item(row, 2).text(),  # Code (SKU)
+                        self.table.item(row, 3).text(),  # SubPartCode
+                        self.table.item(row, 4).text(),  # SupCode
+                        self.table.item(row, 5).text(),  # Supplier Name
+                        self.table.item(row, 6).text(),  # Description
+                        self.table.item(row, 7).text(),  # Lot No.
+                        self.table.item(row, 8).text(),  # Location
+                        self.table.item(row, 9).text()   # Status
                     ])
             
             # Write to CSV
@@ -530,8 +530,9 @@ class RollsTab(QWidget):
             with open(file_path, 'w', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([
-                    'Roll ID', 'SKU', 'Lot', 'Current Length', 
-                    'Original Length', 'Location', 'Status'
+                    'Roll ID', 'Code', 'SubPartCode', 'SupCode',
+                    'Supplier Name', 'Description', 'Lot No.',
+                    'Location', 'Status'
                 ])
                 writer.writerows(rows)
             

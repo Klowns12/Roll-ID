@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import logging
+import socket
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt, QThread, Signal
@@ -135,19 +136,43 @@ class FabricRollApp(QApplication):
             logger.info("Login cancelled by user")
             self.quit()
     
+    def is_port_available(self, host: str, port: int) -> bool:
+        """Check if a port is available"""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex((host, port))
+                return result != 0  # Port is available if connection fails
+        except Exception:
+            return False
+
     def start_api_server(self):
         """Start the API server in a separate thread"""
         try:
-            # Start API server with default settings
+            # Try to find an available port
+            host = '0.0.0.0'
+            ports_to_try = [5000, 5001, 5002, 5003, 5004]
+            available_port = None
+
+            for port in ports_to_try:
+                if self.is_port_available(host, port):
+                    available_port = port
+                    break
+
+            if not available_port:
+                logger.warning("No available ports found in range 5000-5004, using 5000 anyway")
+                available_port = 5000
+
+            # Start API server with available port
             self.api_server = APIServer(
-                host='0.0.0.0',
-                port=5000,
+                host=host,
+                port=available_port,
                 debug=False
             )
             # Run in a separate thread
             self.api_server.run_in_thread()
             logger.info(f"API server started on {self.api_server.host}:{self.api_server.port}")
-            
+
         except Exception as e:
             logger.error(f"Failed to start API server: {e}")
             raise

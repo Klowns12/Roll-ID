@@ -92,8 +92,18 @@ class LabelPreviewDialog(QDialog):
         try:
             from PySide6.QtPrintSupport import QPrinter, QPrintDialog
             from PySide6.QtGui import QPainter
+            from PySide6.QtCore import QPageSize, QSizeF
             
             printer = QPrinter(QPrinter.HighResolution)
+            
+            # ตั้งค่า page size สำหรับฉลาก 10x5 cm
+            page_size = QPageSize(QSizeF(100, 50), QPageSize.Millimeter)
+            printer.setPageSize(page_size)
+            printer.setPageMargins(0, 0, 0, 0, QPrinter.Millimeter)
+            
+            # ตั้งค่าให้ไม่มีการ crop หรือ scale
+            printer.setFullPage(True)
+            
             dialog = QPrintDialog(printer, self)
             
             if dialog.exec() == QDialog.Accepted:
@@ -109,7 +119,7 @@ class LabelPreviewDialog(QDialog):
                     pixmap = QPixmap()
                     pixmap.loadFromData(buffer.getvalue())
                     
-                    # Draw on printer
+                    # Draw on printer - ปรับขนาดให้พอดีกับ page
                     painter.drawPixmap(0, 0, pixmap)
                 
                 painter.end()

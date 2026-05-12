@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QPushButton
@@ -5,6 +7,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QBrush, QColor
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 class DashboardTab(QWidget):
     def __init__(self, storage):
@@ -182,7 +186,7 @@ class DashboardTab(QWidget):
             self.recent_activities_card.findChild(QLabel).setText(str(today_activities))
             
         except Exception as e:
-            print(f"Error updating stats cards: {e}")
+            logger.error(f"Error updating stats cards: {e}")
     
     def update_recent_rolls(self):
         """Update the recent rolls table"""

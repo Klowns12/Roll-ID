@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QHeaderView, QPushButton, QLabel, QDateEdit, QComboBox, QGroupBox,
-    QLineEdit, QMessageBox, QDialog, QFormLayout, QDialogButtonBox, QTextEdit, QToolTip, QApplication
+    QLineEdit, QMessageBox, QDialog, QFormLayout, QDialogButtonBox, QTextEdit, QToolTip, QApplication, QFileDialog
 )
 from PySide6.QtCore import Qt, QDate, QSortFilterProxyModel, QRegularExpression
 from PySide6.QtGui import QRegularExpressionValidator, QBrush, QColor
@@ -93,9 +93,9 @@ class LogsTab(QWidget):
         
         # Logs table
         self.logs_table = QTableWidget()
-        self.logs_table.setColumnCount(5)
+        self.logs_table.setColumnCount(7)
         self.logs_table.setHorizontalHeaderLabels([
-            "Timestamp", "Action", "User", "Roll ID", "Details"
+            "Timestamp", "Action", "User", "Roll ID", "Issue Doc", "Customer", "Details"
         ])
         self.logs_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.logs_table.verticalHeader().setVisible(False)
@@ -106,9 +106,11 @@ class LogsTab(QWidget):
         
         # Set column widths
         self.logs_table.setColumnWidth(0, 150)  # Timestamp
-        self.logs_table.setColumnWidth(1, 150)  # Action
+        self.logs_table.setColumnWidth(1, 120)  # Action
         self.logs_table.setColumnWidth(2, 100)  # User
-        self.logs_table.setColumnWidth(3, 150)  # Roll ID
+        self.logs_table.setColumnWidth(3, 120)  # Roll ID
+        self.logs_table.setColumnWidth(4, 120)  # Issue Doc
+        self.logs_table.setColumnWidth(5, 120)  # Customer
         # Details column will take remaining space
         
         # Add widgets to layout
@@ -195,7 +197,7 @@ class LogsTab(QWidget):
         # Resize columns to contents
         self.logs_table.resizeColumnsToContents()
         # Make sure details column takes remaining space
-        self.logs_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self.logs_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
     
     def add_log_to_table(self, log):
         """Add a single log entry to the table"""
@@ -229,20 +231,27 @@ class LogsTab(QWidget):
             roll_id_item.setData(Qt.ItemDataRole.UserRole, roll_id)  # Store roll ID for later use
         self.logs_table.setItem(row, 3, roll_id_item)
         
-        # Details (truncated)
+        # Issue Doc
+        issue_doc = ""
+        customer = ""
         details = getattr(log, 'details', '')
         if isinstance(details, dict):
+            issue_doc = details.get("issue_doc", details.get("invoice_number", details.get("po_number", "")))
+            customer = details.get("customer", details.get("spl_name", ""))
             # Convert dict to formatted string
             details_str = ", ".join(f"{k}: {v}" for k, v in details.items())
         else:
             details_str = str(details)
+        
+        self.logs_table.setItem(row, 4, QTableWidgetItem(str(issue_doc)))
+        self.logs_table.setItem(row, 5, QTableWidgetItem(str(customer)))
         
         # Truncate long details
         max_length = 100
         if len(details_str) > max_length:
             details_str = details_str[:max_length] + "..."
         
-        self.logs_table.setItem(row, 4, QTableWidgetItem(details_str))
+        self.logs_table.setItem(row, 6, QTableWidgetItem(details_str))
         
         # Color code by action type
         self.color_code_row(row, action)
@@ -284,7 +293,7 @@ class LogsTab(QWidget):
         action = self.logs_table.item(row, 1).text()
         user = self.logs_table.item(row, 2).text()
         roll_id = self.logs_table.item(row, 3).text()
-        details = self.logs_table.item(row, 4).text()
+        details = self.logs_table.item(row, 6).text()
         
         # Find the original log entry for full details
         log_entry = None
@@ -342,11 +351,20 @@ class LogsTab(QWidget):
                 else:
                     details_str = str(details)
                 
+                # Extract issue_doc and customer for export
+                issue_doc = ""
+                customer = ""
+                if isinstance(details, dict):
+                    issue_doc = details.get("issue_doc", details.get("invoice_number", details.get("po_number", "")))
+                    customer = details.get("customer", details.get("spl_name", ""))
+                
                 data.append({
                     'timestamp': timestamp,
                     'action': getattr(log, 'action', ''),
                     'user': getattr(log, 'user', 'system'),
                     'roll_id': getattr(log, 'roll_id', ''),
+                    'issue_doc': issue_doc,
+                    'customer': customer,
                     'details': details_str
                 })
             

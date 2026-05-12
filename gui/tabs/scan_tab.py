@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -18,8 +20,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDate, Signal as pyqtSignal, QObject, QTimer
 from PySide6.QtGui import QPixmap
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import datetime
+import re
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+logger = logging.getLogger(__name__)
 
 from io import BytesIO
 import json
@@ -309,10 +316,10 @@ class ScanTab(QWidget):
     def on_scan_received(self, scan_data):
         """Handle a QR code scan from a mobile device"""
         try:
-            print("--------on_scan_received----------")
-            print(scan_data)
+            logger.debug(f"--------on_scan_received----------")
+            logger.debug(scan_data)
             datas = scan_data.split("%")
-            print(datas)
+            logger.debug(datas)
 
             roll = Roll(
                 roll_id=datas[0],
@@ -564,7 +571,7 @@ class ScanTab(QWidget):
                 success_count += 1
 
             except Exception as e:
-                print(f"Error importing row {idx}: {str(e)}")
+                logger.error(f"Error importing row {idx}: {str(e)}")
 
         # Show results
         QMessageBox.information(

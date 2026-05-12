@@ -1,6 +1,7 @@
 """
 Reports Tab - ระบบค้นหา Suppliers และข้อมูล Roll
 """
+import logging
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -30,6 +31,8 @@ from datetime import datetime
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from utils.suppliers_manager import SuppliersManager
+
+logger = logging.getLogger(__name__)
 
 
 class ReportsTab(QWidget):
@@ -247,35 +250,27 @@ class ReportsTab(QWidget):
     # ========== Rolls Search Methods ==========
 
     def apply_roll_filters(self):
-        """ใช้ตัวกรองการค้นหาแบบ dropdown + text"""
-        if not self.all_rolls:
-            self.filtered_rolls = []
-            self.refresh_rolls_table([])
-            return
+        """ใช้ตัวกรองการค้นหาแบบ dropdown + text (ใช้ database query เพื่อความเร็ว)"""
+        keyword = self.filter_input.text().strip()
+        field = self.filter_field_combo.currentText()
 
-        keyword = self.filter_input.text().strip().lower()
         if not keyword:
+            # ไม่มี keyword แสดงทั้งหมด (ใช้ cache ถ้ามี)
+            if not self.all_rolls:
+                self.load_rolls_data()
             self.filtered_rolls = self.all_rolls
         else:
-            field = self.filter_field_combo.currentText()
-            filtered = []
-            for roll in self.all_rolls:
-                value = ""
-                if field == "Code":
-                    value = roll.sku or roll.pdt_code or ""
-                elif field == "Location":
-                    value = roll.location or ""
-                elif field == "Roll ID":
-                    value = roll.roll_id or ""
-                elif field == "Lot":
-                    value = roll.lot or ""
+            # ใช้ database query แทน Python loop
+            try:
+                self.filtered_rolls = self.storage.search_rolls_by_field(field, keyword)
+            except Exception as e:
+                # Fallback ถ้า database error
+                logger.warning(f"Database search error: {e}, falling back to Python filter")
+                self.filtered_rolls = [
+                    roll for roll in self.all_rolls
+                    if keyword.lower() in str(getattr(roll, field.replace(" ", "_").lower(), "") or "").lower()
+                ]
 
-                if keyword in str(value).lower():
-                    filtered.append(roll)
-            self.filtered_rolls = filtered
-
-        # Reset limit when filter changes
-        # self.display_limit = 100 # Optional: keep existing limit or reset
         self.refresh_rolls_table(self.filtered_rolls)
 
     def clear_roll_filters(self):
@@ -302,83 +297,37 @@ class ReportsTab(QWidget):
             self.load_more_btn.setVisible(False)
 
         for row, roll in enumerate(display_rolls):
-            # ดึงข้อมูล Supplier และข้อมูลอื่นๆ จาก Suppliers.csv
-            supplier = ""
-            exist_qty = roll.current_length  # Default value
-            roll_status = (
-                "เต็มม้วน" if roll.current_length >= roll.original_length else "เศษ"
-            )  # Default
+            # สำหรับ rolls ใหม่ (มี Roll ID) ใช้ข้อมูลจาก database เป็นหลัก
+            # เพราะ CSV เป็นข้อมูลเก่าที่ไม่ได้อัปเดตตามการ dispatch
+            supplier = roll.spl_name or ""
+            exist_qty = roll.current_length or 0.0
 
+            # คำนวณสถานะจาก database
+            if exist_qty <= 0:
+                roll_status = "หมด"
+            elif exist_qty >= (roll.original_length or 0.0):
+                roll_status = "เต็มม้วน"
+            else:
+                roll_status = "เศษ"
+
+            # ดึงข้อมูล supplier เฉพาะส่วนที่ไม่ใช่ Exist_Qty และ RollStatus
             try:
                 supplier_data = self.suppliers_manager.search_by_code(roll.sku)
                 if supplier_data:
+                    # ดึง supplier name จาก CSV ถ้าไม่มีใน roll
+                    if not supplier:
+                        if "Suppliers" in supplier_data:
+                            supplier = str(supplier_data.get("Suppliers", ""))
+                        else:
+                            keys = list(supplier_data.keys())
+                            if len(keys) > 1:
+                                supplier = str(supplier_data.get(keys[1], ""))
+
                     # Debug: แสดงชื่อคอลัมน์ทั้งหมด (เฉพาะแถวแรก)
                     if row == 0:
-                        print(f"DEBUG: Available columns: {list(supplier_data.keys())}")
-
-                    # Supplier Name
-                    if "Suppliers" in supplier_data:
-                        supplier = str(supplier_data.get("Suppliers", ""))
-                    else:
-                        keys = list(supplier_data.keys())
-                        if len(keys) > 1:
-                            supplier = str(supplier_data.get(keys[1], ""))
-
-                    # Exist_Qty from QTY column (first one, not renamed)
-                    # Pandas renames duplicate columns to QTY, QTY.1, QTY.2
-                    qty_value = None
-                    if "QTY" in supplier_data:
-                        qty_value = supplier_data.get("QTY")
-
-                    if (
-                        qty_value is not None
-                        and str(qty_value).strip()
-                        and str(qty_value) != "0"
-                    ):
-                        try:
-                            exist_qty = float(qty_value)
-                        except (ValueError, TypeError):
-                            pass
-
-                    # RollStatus from ม้วนเต็ม and เศษ columns
-                    # These might also be renamed by pandas
-                    full_rolls = 0
-                    scrap_qty = 0
-
-                    # Try original names first, then .1, .2 versions
-                    if "ม้วนเต็ม" in supplier_data:
-                        full_value = supplier_data.get("ม้วนเต็ม")
-                        if full_value is not None and str(full_value).strip():
-                            try:
-                                full_rolls = float(full_value)
-                            except (ValueError, TypeError):
-                                pass
-
-                    if "เศษ" in supplier_data:
-                        scrap_value = supplier_data.get("เศษ")
-                        if scrap_value is not None and str(scrap_value).strip():
-                            try:
-                                scrap_qty = float(scrap_value)
-                            except (ValueError, TypeError):
-                                pass
-
-                    # Debug output for first few rows
-                    if row < 3:
-                        print(
-                            f"DEBUG Row {row}: SKU={roll.sku}, QTY={exist_qty}, ม้วนเต็ม={full_rolls}, เศษ={scrap_qty}"
-                        )
-
-                    # Determine status based on ม้วนเต็ม and เศษ
-                    if full_rolls > 0:
-                        roll_status = "เต็มม้วน"
-                    elif scrap_qty > 0:
-                        roll_status = "เศษ"
-
-            except Exception as e:
-                print(f"Error getting supplier data for {roll.sku}: {e}")
-                import traceback
-
-                traceback.print_exc()
+                        logger.debug(f"Available columns: {list(supplier_data.keys())}")
+            except:
+                pass
 
             self.rolls_table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
             self.rolls_table.setItem(row, 1, QTableWidgetItem(roll.sku))

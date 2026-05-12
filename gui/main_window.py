@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         self.logs_tab = LogsTab(self.storage)
         self.statistics_tab = StatisticsTab(self.storage)
         self.scan_tab = ScanTab(self.storage)
-        
+
         # If not logged in, show only Reports tab
         if not self.current_user:
             self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")

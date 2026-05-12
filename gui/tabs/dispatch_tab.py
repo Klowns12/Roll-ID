@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -18,6 +20,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal as pyqtSignal
 from PySide6.QtGui import QDoubleValidator, QPixmap
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from io import BytesIO
 import socket
 import qrcode
@@ -103,7 +107,8 @@ class DispatchQuantityDialog(QDialog):
                 return
             dispatch_length = float(dispatch_text)
             remaining_length = self.available_length - dispatch_length
-            if remaining_length < 0:
+            # ใช้ tolerance เล็กๆ เพื่อป้องกัน floating point error (เช่น -0.00)
+            if remaining_length < -0.01:
                 self.remaining_length_label.setText(
                     f"{remaining_length:.2f} cm (ติดลบ!)"
                 )
@@ -111,7 +116,9 @@ class DispatchQuantityDialog(QDialog):
                     "color: red; font-weight: bold; font-size: 14px;"
                 )
             else:
-                self.remaining_length_label.setText(f"{remaining_length:.2f} cm")
+                # ถ้าใกล้เคียง 0 ให้แสดงเป็น 0.00
+                display_remaining = max(0, remaining_length)
+                self.remaining_length_label.setText(f"{display_remaining:.2f} cm")
                 self.remaining_length_label.setStyleSheet(
                     "color: green; font-weight: bold; font-size: 14px;"
                 )
@@ -279,22 +286,22 @@ class DispatchTab(QWidget):
 
     def on_mobile_client_opened(self):
         """เรียกเมื่อ mobile client เปิดหน้าเว็บ"""
-        print("Mobile client opened")
+        logger.info("Mobile client opened")
         # ปิด QR dialog ถ้ามีและยังเปิดอยู่
         if hasattr(self, "mobile_qr_dialog") and self.mobile_qr_dialog:
             try:
                 self.mobile_qr_dialog.accept()
             except Exception as e:
-                print(f"Error closing QR dialog: {e}")
+                logger.error(f"Error closing QR dialog: {e}")
 
     def on_mobile_scan_received(self, scan_data):
         """เรียกเมื่อรับข้อมูลจากการสแกน"""
         try:
-            print(f"Received scan data: {scan_data}")
+            logger.info(f"Received scan data: {scan_data}")
             self.roll_id_input.setText(scan_data)
             self.dispatch(scan_data)
         except Exception as e:
-            print(f"Error handling mobile scan: {e}")
+            logger.error(f"Error handling mobile scan: {e}")
 
     def dispatch(self, code):
         # ตรวจสอบว่ามีม้วนนี้ในระบบหรือไม่
@@ -367,11 +374,12 @@ class DispatchTab(QWidget):
             if dispatch_length_str:
                 dispatch_length_value = float(dispatch_length_str)
                 remaining_length_value = roll.current_length - dispatch_length_value
-                if remaining_length_value < 0:
+                # ใช้ tolerance เพื่อป้องกัน floating point error
+                if remaining_length_value < 0.01:
                     remaining_length_value = 0
             remaining_length_str = f"{remaining_length_value:.2f} cm"
             status = "active"
-            if remaining_length_value <= 0:
+            if remaining_length_value <= 0.01:
                 status = "used"
 
             # บันทึกการเปลี่ยนแปลง
@@ -483,4 +491,4 @@ class DispatchTab(QWidget):
             self.history_table.resizeColumnsToContents()
 
         except Exception as e:
-            print(f"Error loading dispatch history: {e}")
+            logger.error(f"Error loading dispatch history: {e}")

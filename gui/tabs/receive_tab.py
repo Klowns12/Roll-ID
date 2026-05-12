@@ -1,3 +1,5 @@
+import logging
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QLineEdit, QComboBox, QPushButton, QMessageBox, QTabWidget,
@@ -18,6 +20,8 @@ import socket
 import webbrowser
 from PySide6.QtCore import QTimer
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
+logger = logging.getLogger(__name__)
 import threading
 import queue
 import sys
@@ -231,10 +235,10 @@ class ReceiveTab(QWidget):
                     supplier_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
                     self.manual_supplier_name.setCompleter(supplier_completer)
             
-            print("Autocomplete setup completed successfully")
+            logger.info("Autocomplete setup completed successfully")
             
         except Exception as e:
-            print(f"Error setting up autocomplete: {e}")
+            logger.error(f"Error setting up autocomplete: {e}")
     
     # def create_master_tab(self):
     #     """Create the 'From Master' tab"""
@@ -578,7 +582,14 @@ class ReceiveTab(QWidget):
             
             # Switch to the rolls tab in the main window
             if hasattr(main_window, 'tab_widget'):
-                main_window.tab_widget.setCurrentIndex(3)  # Updated index for rolls tab
+                # Find rolls tab index dynamically
+                rolls_tab_index = None
+                for i in range(main_window.tab_widget.count()):
+                    if "Rolls" in main_window.tab_widget.tabText(i) or "ม้วน" in main_window.tab_widget.tabText(i):
+                        rolls_tab_index = i
+                        break
+                if rolls_tab_index is not None:
+                    main_window.tab_widget.setCurrentIndex(rolls_tab_index)
                 
         except Exception as e:
             QMessageBox.critical(

@@ -1,7 +1,10 @@
 import os
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
 
 class Config:
     """Application configuration manager"""
@@ -66,8 +69,7 @@ class Config:
         """
         os.getcwd()
         self.config_file = config_file or os.path.join(os.path.dirname(__file__),"data", 'config.json')
-        print("-----config-----")
-        print(self.config_file)
+        logger.debug(f"Config file: {self.config_file}")
         self._config = self._load_config()
         self._ensure_directories()
     
@@ -83,7 +85,7 @@ class Config:
                 self._save_config(self._DEFAULT_CONFIG)
                 return self._DEFAULT_CONFIG
         except Exception as e:
-            print(f"Error loading config: {e}")
+            logger.error(f"Error loading config: {e}")
             return self._DEFAULT_CONFIG
     
     def _save_config(self, config: Dict[str, Any]) -> None:
@@ -92,7 +94,7 @@ class Config:
             with open(self.config_file, 'w') as f:
                 json.dump(config, f, indent=4)
         except Exception as e:
-            print(f"Error saving config: {e}")
+            logger.error(f"Error saving config: {e}")
     
     def _merge_configs(self, default: Dict[str, Any], custom: Dict[str, Any]) -> Dict[str, Any]:
         """Recursively merge default and custom configurations"""

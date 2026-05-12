@@ -26,8 +26,7 @@ def cleanup() -> None:
 # Register cleanup with atexit
 atexit.register(cleanup)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging (main.py already sets up basicConfig)
 logger = logging.getLogger(__name__)
 
 class APIServer:
