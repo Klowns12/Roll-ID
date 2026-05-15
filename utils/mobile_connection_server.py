@@ -4,11 +4,19 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import ssl
 import os
+import sys
+import shutil
 import socket
 import threading
 import queue
 import subprocess
 import glob
+
+# Try loading bundled HTML content for production (.exe mode)
+try:
+    from utils.bundled_html import HTML_CONTENT
+except ImportError:
+    HTML_CONTENT = None
 
 
 class MobileConnectionHandler(BaseHTTPRequestHandler):
@@ -28,9 +36,14 @@ class MobileConnectionHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
 
-            html_path = os.path.join(os.getcwd(), "utils", "mobile_scan.html")
-            with open(html_path, "r", encoding="utf-8") as f:
-                html = f.read()
+            if getattr(sys, 'frozen', False) and HTML_CONTENT is not None:
+                # โหมด Production (รันจากไฟล์ .exe) -> โหลด HTML จาก Module ที่ฝังตัวแปร Base64 เอาไว้
+                html = HTML_CONTENT
+            else:
+                # โหมด Development -> อ่านตรงจากไฟล์ assets/mobile_scan.html เพื่อให้เห็นการเปลี่ยนแปลงทันทีเมื่อแก้ไข
+                html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "mobile_scan.html")
+                with open(html_path, "r", encoding="utf-8") as f:
+                    html = f.read()
 
             self.wfile.write(html.encode("utf-8"))
         else:
@@ -82,8 +95,6 @@ class MobileConnectionServer(QObject):
     def __init__(self, port=8000):
         super().__init__()
 
-        self._find_cert_files()
-
         # ใช้ IP ที่เชื่อมต่อกับ router (WiFi) แทนการใช้ hostname
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -102,16 +113,23 @@ class MobileConnectionServer(QObject):
         self.thread = None
         self.request_queue = None
         self.client_open_queue = None
-
         self.url = f"https://{self.local_ip}:{self.port}"
-        
-        print(f"Detected IP Address: {self.local_ip}")
 
         cert_folder = "cert"
         os.makedirs(cert_folder, exist_ok=True)
-
+        
+        # คัดลอก cgen.exe จาก bundle (ถ้าถูกแพ็คด้วย PyInstaller) ไปยังโฟลเดอร์รันไทม์เพื่อใช้สร้างใบรับรอง SSL
+        local_cgen = os.path.join(cert_folder, "cgen.exe")
+        if not os.path.exists(local_cgen) and getattr(sys, 'frozen', False):
+            bundled_cgen = os.path.join(getattr(sys, '_MEIPASS', ''), "cert", "cgen.exe")
+            if os.path.exists(bundled_cgen):
+                try:
+                    shutil.copy(bundled_cgen, local_cgen)
+                except Exception as e:
+                    print(f"Failed to copy cgen.exe from bundle: {e}")
+        
         cmd = f'cgen.exe -install "{self.local_ip}"'
-        result = subprocess.run(
+        subprocess.run(
             cmd,
             shell=True,
             capture_output=True,
@@ -120,8 +138,8 @@ class MobileConnectionServer(QObject):
             cwd=cert_folder
         )
 
-        print(result.stdout)
-        print(result.stderr)
+        # สแกนหาไฟล์ Certificate หลังจากรัน cgen.exe เพื่อสร้างไฟล์เสร็จเรียบร้อยแล้ว
+        self._find_cert_files()
 
     def _find_cert_files(self):
         cert_folder = os.path.join(os.getcwd(), "cert")
@@ -132,36 +150,21 @@ class MobileConnectionServer(QObject):
 
         if cert_files:
             self.cert_file = cert_files[0]
-        else:
-            print(f"ไม่พบไฟล์ใบรับรอง (.pem) ในโฟลเดอร์: {cert_folder}")
-
         if key_files:
             self.key_file = key_files[0]
-        else:
-            print(f"ไม่พบไฟล์คีย์ (-key.pem) ในโฟลเดอร์: {cert_folder}")
-
-        if hasattr(self, "cert_file") and hasattr(self, "key_file"):
-            print(f"พบไฟล์ใบรับรอง: {os.path.basename(self.cert_file)}")
-            print(f"พบไฟล์คีย์: {os.path.basename(self.key_file)}")
 
     def start(self):
 
         def run():
-            print(">> Creating HTTPServer...")
             # Bind to 0.0.0.0 เพื่อรับ connection จากทุก network interface
             httpd = HTTPServer(("0.0.0.0", self.port), MobileConnectionHandler)
             httpd.request_queue = self.request_queue
             httpd.client_open_queue = self.client_open_queue
 
-            print(">> Creating SSLContext...")
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(certfile=self.cert_file, keyfile=self.key_file)
 
-            print(">> Wrapping socket with SSLContext...")
             httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
-
-            print(f"HTTPS server running at https://{self.local_ip}:{self.port}")
-            print(f"Server is listening on all network interfaces (0.0.0.0:{self.port})")
             httpd.serve_forever()
 
         self.request_queue = queue.Queue()
@@ -189,7 +192,6 @@ class MobileConnectionServer(QObject):
             try:
                 while True:
                     value = self.request_queue.get_nowait()
-                    print("SCAN =", value)
                     self.scan_received.emit(value)
             except queue.Empty:
                 pass
@@ -199,7 +201,6 @@ class MobileConnectionServer(QObject):
             try:
                 while True:
                     _ = self.client_open_queue.get_nowait()
-                    print("CLIENT OPENED")
                     self.client_opened.emit()
             except queue.Empty:
                 pass

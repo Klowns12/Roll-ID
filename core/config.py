@@ -13,7 +13,7 @@ class Config:
     _DEFAULT_CONFIG = {
         "app": {
             "name": "Fabric Roll Management System",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "organization": "Your Company",
             "data_dir": "data",
             "log_dir": "logs"

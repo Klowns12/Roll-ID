@@ -2,6 +2,10 @@
 Login Dialog for Fabric Roll Management System
 """
 
+import os
+import json
+import base64
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QFrame, QCheckBox
@@ -65,7 +69,7 @@ class LoginDialog(QDialog):
         
         # Username field
         username_label = QLabel("ชื่อผู้ใช้ / Username:")
-        self.username_input = QLineEdit()
+        self.username_input = QLineEdit("")
         self.username_input.setPlaceholderText("Enter your username")
         self.username_input.setMinimumHeight(35)
         self.username_input.returnPressed.connect(self.on_login)
@@ -75,7 +79,7 @@ class LoginDialog(QDialog):
         
         # Password field
         password_label = QLabel("รหัสผ่าน / Password:")
-        self.password_input = QLineEdit()
+        self.password_input = QLineEdit("")
         self.password_input.setPlaceholderText("Enter your password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setMinimumHeight(35)
@@ -88,6 +92,10 @@ class LoginDialog(QDialog):
         self.show_password_checkbox = QCheckBox("แสดงรหัสผ่าน / Show password")
         self.show_password_checkbox.stateChanged.connect(self.toggle_password_visibility)
         form_layout.addWidget(self.show_password_checkbox)
+        
+        # Remember me checkbox
+        self.remember_checkbox = QCheckBox("จดจำรหัสผ่าน / Remember me")
+        form_layout.addWidget(self.remember_checkbox)
         
         layout.addLayout(form_layout)
         layout.addSpacing(10)
@@ -147,6 +155,9 @@ class LoginDialog(QDialog):
         info_label.setStyleSheet("color: #999; font-size: 9pt; font-style: italic;")
         layout.addWidget(info_label)
         
+        # Load remembered credentials
+        self.load_remembered_credentials()
+        
         # Set focus to username input
         self.username_input.setFocus()
     
@@ -185,15 +196,10 @@ class LoginDialog(QDialog):
         if self.auth_manager.authenticate(username, password):
             self.authenticated_user = self.auth_manager.get_current_user()
             
-            # Show welcome message
-            role_text = "ผู้ดูแลระบบ / Administrator" if self.authenticated_user.is_admin() else "ผู้ใช้ / User"
-            QMessageBox.information(
-                self,
-                "เข้าสู่ระบบสำเร็จ / Login Successful",
-                f"ยินดีต้อนรับ / Welcome, {self.authenticated_user.full_name}!\n"
-                f"บทบาท / Role: {role_text}"
-            )
+            # Save remembered credentials if remember_checkbox is checked
+            self.save_remembered_credentials(username, password)
             
+            # Login success - accept and emit signal directly without welcome popup
             self.login_successful.emit(self.authenticated_user)
             self.accept()
         else:
@@ -205,7 +211,92 @@ class LoginDialog(QDialog):
             )
             self.password_input.clear()
             self.password_input.setFocus()
-    
+
+    def load_remembered_credentials(self):
+        storage = self.auth_manager.storage
+        remember_val = storage.get_setting("remember_login", "0")
+        
+        # Migrate legacy login_pref.json if it exists
+        pref_file = os.path.join(os.getcwd(), "login_pref.json")
+        if os.path.exists(pref_file):
+            try:
+                with open(pref_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if data.get("remember", False):
+                        remember_val = "1"
+                        username_enc = SimpleCipher.encrypt(data.get("username", "admin"))
+                        password_enc = SimpleCipher.encrypt(data.get("password", "admin"))
+                        storage.set_setting("remember_login", "1")
+                        storage.set_setting("remembered_username", username_enc)
+                        storage.set_setting("remembered_password", password_enc)
+            except Exception:
+                pass
+            try:
+                os.remove(pref_file) # Safe deletion of plaintext file
+            except Exception:
+                pass
+
+        if remember_val == "1":
+            username_enc = storage.get_setting("remembered_username", "")
+            password_enc = storage.get_setting("remembered_password", "")
+            
+            username = SimpleCipher.decrypt(username_enc)
+            password = SimpleCipher.decrypt(password_enc)
+            
+            self.username_input.setText(username)
+            self.password_input.setText(password)
+            self.remember_checkbox.setChecked(True)
+        else:
+            # Check if there is no database preference set at all (first run)
+            # if so, default to admin/admin
+            first_run = storage.get_setting("remembered_username") is None
+            if first_run:
+                self.username_input.setText("admin")
+                self.password_input.setText("admin")
+                self.remember_checkbox.setChecked(True)
+            else:
+                self.username_input.setText("")
+                self.password_input.setText("")
+                self.remember_checkbox.setChecked(False)
+
+    def save_remembered_credentials(self, username, password):
+        storage = self.auth_manager.storage
+        if self.remember_checkbox.isChecked():
+            username_enc = SimpleCipher.encrypt(username)
+            password_enc = SimpleCipher.encrypt(password)
+            
+            storage.set_setting("remember_login", "1")
+            storage.set_setting("remembered_username", username_enc)
+            storage.set_setting("remembered_password", password_enc)
+        else:
+            storage.set_setting("remember_login", "0")
+            storage.set_setting("remembered_username", "")
+            storage.set_setting("remembered_password", "")
+
     def get_authenticated_user(self):
         """Get the authenticated user"""
         return self.authenticated_user
+
+
+class SimpleCipher:
+    SECRET_KEY = b"RollID_SuperSecretEncryptionKey_2026!"
+    
+    @classmethod
+    def encrypt(cls, text: str) -> str:
+        if not text:
+            return ""
+        # Byte XOR with secret key
+        data = text.encode("utf-8")
+        cipher_bytes = bytes(data[i] ^ cls.SECRET_KEY[i % len(cls.SECRET_KEY)] for i in range(len(data)))
+        return base64.b64encode(cipher_bytes).decode("utf-8")
+        
+    @classmethod
+    def decrypt(cls, encrypted_text: str) -> str:
+        if not encrypted_text:
+            return ""
+        try:
+            cipher_bytes = base64.b64decode(encrypted_text.encode("utf-8"))
+            data = bytes(cipher_bytes[i] ^ cls.SECRET_KEY[i % len(cls.SECRET_KEY)] for i in range(len(cipher_bytes)))
+            return data.decode("utf-8")
+        except Exception:
+            return ""

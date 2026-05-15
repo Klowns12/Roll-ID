@@ -72,7 +72,7 @@ class DashboardTab(QWidget):
         
         self.recent_rolls_table = QTableWidget()
         self.recent_rolls_table.setColumnCount(5)
-        self.recent_rolls_table.setHorizontalHeaderLabels(["Roll ID", "SKU", "Lot", "Width", "Location"])
+        self.recent_rolls_table.setHorizontalHeaderLabels(["Roll ID", "Code", "Lot No.", "Width", "Location"])
         self.recent_rolls_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.recent_rolls_table.verticalHeader().setVisible(False)
         self.recent_rolls_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -190,11 +190,11 @@ class DashboardTab(QWidget):
     
     def update_recent_rolls(self):
         """Update the recent rolls table"""
-        # Get recent rolls (last 10)
+        # Get recent rolls (last 10) - sort by roll_id as fallback
         all_rolls = self.storage.search_rolls()
         recent_rolls = sorted(
             all_rolls,
-            key=lambda x: x.date_received,
+            key=lambda x: x.roll_id,
             reverse=True
         )[:10]
         
@@ -206,10 +206,10 @@ class DashboardTab(QWidget):
             row = self.recent_rolls_table.rowCount()
             self.recent_rolls_table.insertRow(row)
             
-            # Add items to the row
+            # Add items to the row using new simplified schema
             self.recent_rolls_table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
-            self.recent_rolls_table.setItem(row, 1, QTableWidgetItem(roll.sku))
-            self.recent_rolls_table.setItem(row, 2, QTableWidgetItem(roll.lot))
+            self.recent_rolls_table.setItem(row, 1, QTableWidgetItem(roll.code))
+            self.recent_rolls_table.setItem(row, 2, QTableWidgetItem(roll.lot_no))
             self.recent_rolls_table.setItem(row, 3, QTableWidgetItem(roll.width or ""))
             self.recent_rolls_table.setItem(row, 4, QTableWidgetItem(roll.location))
             

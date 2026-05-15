@@ -6,7 +6,11 @@ Import Master Products from MasterDATA.csv
 import pandas as pd
 import sys
 import os
-from storage import StorageManager, MasterProduct
+
+# Add root directory to path
+sys.path.append(os.getcwd())
+
+from core.storage import StorageManager, MasterProduct
 from datetime import datetime
 
 def import_master_products(csv_file):

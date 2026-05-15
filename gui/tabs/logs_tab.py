@@ -10,9 +10,10 @@ import json
 import pandas as pd
 
 class LogsTab(QWidget):
-    def __init__(self, storage):
+    def __init__(self, storage, current_user=None):
         super().__init__()
         self.storage = storage
+        self.current_user = current_user
         self.setup_ui()
         self.load_logs()
     
@@ -97,7 +98,8 @@ class LogsTab(QWidget):
         self.logs_table.setHorizontalHeaderLabels([
             "Timestamp", "Action", "User", "Roll ID", "Issue Doc", "Customer", "Details"
         ])
-        self.logs_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self.logs_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.logs_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.logs_table.verticalHeader().setVisible(False)
         self.logs_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.logs_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -105,18 +107,20 @@ class LogsTab(QWidget):
         self.logs_table.doubleClicked.connect(self.show_log_details)
         
         # Set column widths
-        self.logs_table.setColumnWidth(0, 150)  # Timestamp
-        self.logs_table.setColumnWidth(1, 120)  # Action
+        self.logs_table.setColumnWidth(0, 160)  # Timestamp
+        self.logs_table.setColumnWidth(1, 130)  # Action
         self.logs_table.setColumnWidth(2, 100)  # User
         self.logs_table.setColumnWidth(3, 120)  # Roll ID
         self.logs_table.setColumnWidth(4, 120)  # Issue Doc
-        self.logs_table.setColumnWidth(5, 120)  # Customer
-        # Details column will take remaining space
+        self.logs_table.setColumnWidth(5, 150)  # Customer
+        self.logs_table.setColumnWidth(6, 400)  # Details
+        self.logs_table.setSortingEnabled(True)
+        self.logs_table.setAlternatingRowColors(True) # เพิ่มสีแถบสลับ
         
         # Add widgets to layout
         layout.addWidget(filter_group)
         layout.addLayout(btn_layout)
-        layout.addWidget(self.logs_table, 1)  # Give table more space
+        layout.addWidget(self.logs_table)
     
     def load_logs(self):
         """Load logs from storage"""
@@ -127,65 +131,100 @@ class LogsTab(QWidget):
         self.apply_filters()
     
     def apply_filters(self):
-        """Apply filters to the logs"""
-        # Clear table
+        """Apply filters to the logs and update UI"""
+        # ปิดการเรียงลำดับชั่วคราวเพื่อประสิทธิภาพ
+        self.logs_table.setSortingEnabled(False)
         self.logs_table.setRowCount(0)
         
         # Get filter values
         start_date = self.start_date.date().toString("yyyy-MM-dd")
-        end_date = self.end_date.date().addDays(1).toString("yyyy-MM-dd")  # Include end date
+        end_date = self.end_date.date().addDays(1).toString("yyyy-MM-dd")
         action_filter = self.action_filter.currentData()
         user_filter = self.user_filter.text().lower()
         search_text = self.search_input.text().lower()
         
-        # Filter logs
-        filtered_logs = []
+        # Filter and display logs
         for log in self.all_logs:
-            # Skip if log doesn't have required attributes
+            # Skip if invalid
             if not hasattr(log, 'timestamp') or not hasattr(log, 'action'):
                 continue
             
             # Apply date filter
-            if hasattr(log, 'timestamp'):
-                log_date = log.timestamp.split('T')[0]  # Get date part only
-                if log_date < start_date or log_date >= end_date:
-                    continue
+            log_date = log.timestamp.split('T')[0] if 'T' in log.timestamp else log.timestamp.split(' ')[0]
+            if log_date < start_date or log_date >= end_date:
+                continue
             
             # Apply action filter
-            if action_filter and hasattr(log, 'action') and log.action != action_filter:
+            if action_filter and log.action != action_filter:
                 continue
             
             # Apply user filter
-            if user_filter and hasattr(log, 'user') and user_filter not in log.user.lower():
+            l_user = getattr(log, 'user', '') or 'system'
+            if user_filter and user_filter not in l_user.lower():
                 continue
             
             # Apply search text filter
             if search_text:
-                search_match = False
-                
-                # Check in action
-                if hasattr(log, 'action') and search_text in log.action.lower():
-                    search_match = True
-                
-                # Check in roll_id
-                if not search_match and hasattr(log, 'roll_id') and log.roll_id and search_text in log.roll_id.lower():
-                    search_match = True
-                
-                # Check in details
-                if not search_match and hasattr(log, 'details'):
-                    if isinstance(log.details, str) and search_text in log.details.lower():
-                        search_match = True
-                    elif isinstance(log.details, dict):
-                        # Search in dictionary values
-                        for value in log.details.values():
-                            if search_text in str(value).lower():
-                                search_match = True
-                                break
-                
-                if not search_match:
+                l_details = str(getattr(log, 'details', ''))
+                l_roll = str(getattr(log, 'roll_id', '') or '')
+                if search_text not in l_details.lower() and \
+                   search_text not in l_roll.lower() and \
+                   search_text not in str(log.action).lower():
                     continue
             
-            filtered_logs.append(log)
+            # --- Add to table ---
+            row = self.logs_table.rowCount()
+            self.logs_table.insertRow(row)
+            
+            # 1. Timestamp
+            self.logs_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
+            
+            # 2. Action with color coding
+            action_text = str(log.action).upper()
+            action_item = QTableWidgetItem(action_text)
+            
+            if "RECEIVE" in action_text:
+                action_item.setBackground(QBrush(QColor("#c8e6c9"))) # เขียว
+            elif "DISPATCH" in action_text:
+                action_item.setBackground(QBrush(QColor("#bbdefb"))) # ฟ้า
+            elif "EDIT" in action_text or "UPDATE" in action_text:
+                action_item.setBackground(QBrush(QColor("#fff9c4"))) # เหลือง
+            elif "DELETE" in action_text or "CLEAR" in action_text:
+                action_item.setBackground(QBrush(QColor("#ffcdd2"))) # แดง
+            
+            self.logs_table.setItem(row, 1, action_item)
+            
+            # 3. User
+            self.logs_table.setItem(row, 2, QTableWidgetItem(str(l_user)))
+            
+            # 4. Roll ID
+            self.logs_table.setItem(row, 3, QTableWidgetItem(str(getattr(log, 'roll_id', '') or '')))
+            
+            # 5 & 6. Issue Doc & Customer (Extract from details if possible)
+            details = getattr(log, 'details', {})
+            doc_no = ""
+            cus_name = ""
+            if isinstance(details, dict):
+                doc_no = details.get('document_no', '')
+                cus_name = details.get('customer', details.get('customer_name', ''))
+            
+            self.logs_table.setItem(row, 4, QTableWidgetItem(str(doc_no)))
+            self.logs_table.setItem(row, 5, QTableWidgetItem(str(cus_name)))
+            
+            # 7. Details (Full JSON or String)
+            detail_str = json.dumps(details, ensure_ascii=False) if isinstance(details, dict) else str(details)
+            self.logs_table.setItem(row, 6, QTableWidgetItem(detail_str))
+
+        # เปิดการเรียงลำดับกลับมา
+        self.logs_table.setSortingEnabled(True)
+        # เรียงลำดับตาม Timestamp ล่าสุดเป็นค่าเริ่มต้น (ถ้าระบบยังไม่ได้เรียง)
+        self.logs_table.sortByColumn(0, Qt.SortOrder.DescendingOrder)
+        
+        # ปรับขนาดคอลัมน์ให้พอดีโดยอัตโนมัติ (และกำหนดขนาดของ Details เป็น 400 เพื่อไม่ให้ล้นยาวเกินไป)
+        self.logs_table.resizeColumnsToContents()
+        self.logs_table.setColumnWidth(6, 400)
+
+    def export_logs(self):
         
         # Sort by timestamp (newest first)
         filtered_logs.sort(key=lambda x: x.timestamp, reverse=True)
@@ -400,14 +439,11 @@ class LogsTab(QWidget):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            # In a real implementation, you would call storage.clear_logs()
-            # For now, we'll just show a message
-            QMessageBox.information(
-                self,
-                "Clear Logs",
-                "In a full implementation, all logs would be deleted here."
-            )
-            # self.load_logs()  # Refresh the table
+            if self.storage.delete_all_logs():
+                QMessageBox.information(self, "สำเร็จ", "ลบประวัติการทำงานทั้งหมดเรียบร้อยแล้ว")
+                self.load_logs()  # รีเฟรชตาราง
+            else:
+                QMessageBox.critical(self, "ผิดพลาด", "ไม่สามารถลบ Logs ได้")
 
 
 class LogDetailsDialog(QDialog):

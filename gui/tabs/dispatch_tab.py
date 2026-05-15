@@ -1,494 +1,252 @@
-import logging
-
+from io import BytesIO
+import qrcode
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QGroupBox,
-    QLineEdit,
-    QPushButton,
-    QMessageBox,
-    QLabel,
-    QDoubleSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QDialog,
-    QDialogButtonBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
+    QLineEdit, QPushButton, QLabel, QTableWidget,
+    QTableWidgetItem, QHeaderView, QDialog, QDialogButtonBox
 )
 from PySide6.QtCore import Qt, Signal as pyqtSignal
-from PySide6.QtGui import QDoubleValidator, QPixmap
-from datetime import datetime
-
-logger = logging.getLogger(__name__)
-from io import BytesIO
-import socket
-import qrcode
-
+from PySide6.QtGui import QPixmap
 from utils.mobile_connection_server import MobileConnectionServer
 
-
-class DispatchQuantityDialog(QDialog):
-    """Dialog สำหรับกรอกจำนวนที่ต้องการเบิกออก"""
-
-    def __init__(self, roll_id, available_length, parent=None):
-        super().__init__(parent)
-        self.roll_id = roll_id
-        try:
-            self.available_length = float(available_length)
-        except (TypeError, ValueError):
-            self.available_length = 0.0
-        self.setup_ui()
-
-        self.mobile_qr_dialog = None
-
-    def setup_ui(self):
-        self.setWindowTitle("เบิกออก - Dispatch")
-        self.setModal(True)
-        self.setMinimumWidth(400)
-
-        layout = QVBoxLayout(self)
-
-        # Info group
-        info_group = QGroupBox("ข้อมูลม้วนผ้า")
-        info_layout = QFormLayout()
-
-        self.roll_id_label = QLabel(self.roll_id)
-        self.roll_id_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        info_layout.addRow("เลขม้วน:", self.roll_id_label)
-
-        self.length_label = QLabel(
-            f"{self.available_length:.2f} cm" if self.available_length else "-"
-        )
-        self.length_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        info_layout.addRow("Length ปัจจุบัน:", self.length_label)
-
-        info_group.setLayout(info_layout)
-        layout.addWidget(info_group)
-
-        # Dispatch group
-        dispatch_group = QGroupBox("จำนวนที่ต้องการเบิก")
-        dispatch_layout = QFormLayout()
-
-        self.dispatch_length_input = QLineEdit()
-        self.dispatch_length_input.setPlaceholderText("เช่น 120 (cm)")
-        self.dispatch_length_input.textChanged.connect(self.update_remaining)
-        dispatch_layout.addRow("Length ที่เบิก (cm):", self.dispatch_length_input)
-
-        self.remaining_length_label = QLabel("")
-        self.remaining_length_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        dispatch_layout.addRow("Length คงเหลือ (cm):", self.remaining_length_label)
-
-        dispatch_group.setLayout(dispatch_layout)
-        layout.addWidget(dispatch_group)
-
-        # Buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-        # Initial update
-        self.update_remaining()
-
-    def update_remaining(self):
-        """คำนวน Length คงเหลือ"""
-        self._update_length_remaining()
-
-    def _update_length_remaining(self):
-        try:
-            dispatch_text = self.dispatch_length_input.text().strip()
-            if not dispatch_text:
-                self.remaining_length_label.setText("")
-                self.remaining_length_label.setStyleSheet(
-                    "font-weight: bold; font-size: 14px;"
-                )
-                return
-            dispatch_length = float(dispatch_text)
-            remaining_length = self.available_length - dispatch_length
-            # ใช้ tolerance เล็กๆ เพื่อป้องกัน floating point error (เช่น -0.00)
-            if remaining_length < -0.01:
-                self.remaining_length_label.setText(
-                    f"{remaining_length:.2f} cm (ติดลบ!)"
-                )
-                self.remaining_length_label.setStyleSheet(
-                    "color: red; font-weight: bold; font-size: 14px;"
-                )
-            else:
-                # ถ้าใกล้เคียง 0 ให้แสดงเป็น 0.00
-                display_remaining = max(0, remaining_length)
-                self.remaining_length_label.setText(f"{display_remaining:.2f} cm")
-                self.remaining_length_label.setStyleSheet(
-                    "color: green; font-weight: bold; font-size: 14px;"
-                )
-        except ValueError:
-            self.remaining_length_label.setText("ข้อมูลไม่ถูกต้อง")
-            self.remaining_length_label.setStyleSheet(
-                "color: red; font-weight: bold; font-size: 14px;"
-            )
-
-    def get_dispatch_length(self):
-        """ดึงค่า Length ที่เบิก"""
-        return self.dispatch_length_input.text().strip()
-
+# Import Controller
+from controllers.dispatch_controller import DispatchController
 
 class DispatchTab(QWidget):
-    """Tab สำหรับการเบิกออก (Dispatch) ของม้วนผ้า"""
-
     dispatch_completed = pyqtSignal(dict)
 
-    def __init__(self, storage):
+    def __init__(self, storage, current_user=None):
         super().__init__()
         self.storage = storage
-        self.mobile_server = None
-        self.init_mobile_server()
+        self.current_user = current_user
+        self.controller = DispatchController(self, storage)
         self.setup_ui()
 
     def setup_ui(self):
-        """สร้าง UI"""
         layout = QVBoxLayout(self)
-
-        # Title
-        title = QLabel("เบิกออก / Dispatch")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
-        layout.addWidget(title)
-
-        # Scan section
-        scan_group = QGroupBox("สแกน QR Code")
+        scan_group = QGroupBox("เบิกออกม้วนผ้า (Scan / Dispatch)")
         scan_layout = QVBoxLayout()
-
-        # Scan input
+        
         input_layout = QHBoxLayout()
-        input_layout.addWidget(QLabel("เลขม้วน:"))
-
         self.roll_id_input = QLineEdit()
-        self.roll_id_input.setPlaceholderText("สแกนหรือพิมพ์เลขม้วน (เช่น R00001)")
-        self.roll_id_input.returnPressed.connect(self.process_scan)
+        self.roll_id_input.setPlaceholderText("สแกน QR หรือระบุเลขม้วน...")
+        self.roll_id_input.returnPressed.connect(self.process_scan_input)
+        
+        self.scan_btn = QPushButton("ประมวลผล / Process")
+        self.scan_btn.clicked.connect(self.process_scan_input)
+        
         input_layout.addWidget(self.roll_id_input)
-
-        self.scan_btn = QPushButton("ประมวลผล")
-        self.scan_btn.clicked.connect(self.process_scan)
-        self.scan_btn.setStyleSheet(
-            "background-color: #4CAF50; color: white; padding: 10px;"
-        )
         input_layout.addWidget(self.scan_btn)
-
+        
+        self.mobile_btn = QPushButton("Connect Mobile Device")
+        self.mobile_btn.clicked.connect(self.show_mobile_connection_qr)
+        
+        self.status_label = QLabel("พร้อมทำงาน")
+        self.status_label.setStyleSheet("padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd;")
+        
         scan_layout.addLayout(input_layout)
-
-        self.connect_mobile_btn = QPushButton("Connect Mobile Device")
-        self.connect_mobile_btn.clicked.connect(self.show_mobile_connection_qr)
-        scan_layout.addWidget(self.connect_mobile_btn)
-
-        # Status label
-        self.status_label = QLabel("")
-        self.status_label.setStyleSheet(
-            "padding: 10px; background-color: #f0f0f0; border-radius: 5px;"
-        )
-        self.status_label.setWordWrap(True)
+        scan_layout.addWidget(self.mobile_btn)
         scan_layout.addWidget(self.status_label)
-
         scan_group.setLayout(scan_layout)
-        layout.addWidget(scan_group)
-
-        # Recent dispatches
-        history_group = QGroupBox("ประวัติการเบิกล่าสุด")
+        
+        history_group = QGroupBox("📜 ประวัติและบันทึกการเบิกจ่ายสินค้า (Dispatch History)")
         history_layout = QVBoxLayout()
-
         self.history_table = QTableWidget()
-        self.history_table.setColumnCount(5)
-        self.history_table.setHorizontalHeaderLabels(
-            ["เวลา", "เลขม้วน", "SKU", "Length ที่เบิก", "สถานะ"]
-        )
-        self.history_table.horizontalHeader().setStretchLastSection(True)
-        self.history_table.setAlternatingRowColors(True)
-        self.history_table.setEditTriggers(QTableWidget.NoEditTriggers)
-
+        self.history_table.setColumnCount(6)
+        self.history_table.setSortingEnabled(True)
+        self.history_table.setHorizontalHeaderLabels([
+            "เวลา", "เลขม้วน", "Code", "เบิกออก", "เลขที่เอกสาร", "ลูกค้า"
+        ])
+        self.history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         history_layout.addWidget(self.history_table)
         history_group.setLayout(history_layout)
+        
+        # Status label for counts
+        self.count_label = QLabel("Total: 0 records")
+        self.count_label.setStyleSheet("font-weight: bold; color: #555; margin-top: 5px;")
+        
+        layout.addWidget(scan_group)
         layout.addWidget(history_group)
+        layout.addWidget(self.count_label)
+        self.load_history()
 
-        # Load recent history
-        self.load_recent_history()
+    def show_status(self, message, color_type):
+        colors = {"red": "#ffebee", "green": "#e8f5e9", "blue": "#e3f2fd"}
+        text_colors = {"red": "red", "green": "green", "blue": "blue"}
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet(f"padding: 10px; background-color: {colors.get(color_type, '#f9f9f9')}; color: {text_colors.get(color_type, 'black')};")
 
-    def init_mobile_server(self):
-        if self.mobile_server:
-            try:
-                self.mobile_server.stop()
-            except Exception:
-                pass
-        self.mobile_server = MobileConnectionServer()
-        self.mobile_server.client_opened.connect(self.on_mobile_client_opened)
-        self.mobile_server.scan_received.connect(self.on_mobile_scan_received)
-        self.mobile_server.start()
+    def refresh_ui(self):
+        self.roll_id_input.clear()
+        self.roll_id_input.setFocus()
+        self.load_history()
+
+    def set_roll_id(self, roll_id):
+        """กรอกเลขม้วนและเริ่มประมวลผลทันที"""
+        self.roll_id_input.setText(roll_id)
+        self.process_scan_input()
+
+    def process_scan_input(self):
+        roll_id = self.roll_id_input.text()
+        roll = self.controller.get_and_validate_roll(roll_id)
+        if not roll:
+            return
+        
+        dialog = DispatchQuantityDialog(roll, self)
+        if dialog.exec() == QDialog.Accepted:
+            dispatch_data = dialog.get_dispatch_data()
+            self.controller.execute_dispatch(roll, dispatch_data)
+
+    def load_history(self):
+        self.history_table.setSortingEnabled(False) # ปิดชั่วคราว
+        # ดึงข้อมูลจากตาราง dispatch โดยตรง
+        history = self.storage.get_dispatch_history(limit=15)
+        self.history_table.setRowCount(0)
+        for item in history:
+            row = self.history_table.rowCount()
+            self.history_table.insertRow(row)
+            self.history_table.setItem(row, 0, QTableWidgetItem(str(item.get('timestamp', ""))))
+            self.history_table.setItem(row, 1, QTableWidgetItem(str(item.get('roll_id', ""))))
+            self.history_table.setItem(row, 2, QTableWidgetItem(str(item.get('pdt_code', ""))))
+            
+            # จัดการตัวเลขความยาวเบิกเพื่อให้ Sort ได้ถูกต้อง
+            len_item = QTableWidgetItem()
+            len_val = item.get('length_dispatched', 0)
+            len_item.setData(Qt.ItemDataRole.EditRole, float(len_val if len_val is not None else 0))
+            self.history_table.setItem(row, 3, len_item)
+            
+            self.history_table.setItem(row, 4, QTableWidgetItem(str(item.get('document_no', "-"))))
+            
+            # รวมชื่อและรหัสลูกค้า
+            cus_code = item.get('customer_code', '')
+            cus_name = item.get('customer_name', '')
+            customer = f"{cus_code} {cus_name}".strip()
+            self.history_table.setItem(row, 5, QTableWidgetItem(customer or "-"))
+            
+        self.history_table.setSortingEnabled(True) # เปิดใช้งาน Sort
+        self.count_label.setText(f"Showing: {len(history)} recent records")
 
     def show_mobile_connection_qr(self):
-        try:
-            if not self.mobile_server:
-                QMessageBox.warning(self, "Error", "Mobile server is not available")
-                return
-            qr_url = self.mobile_server.url
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(qr_url)
-            qr.make(fit=True)
-
-            qr_img = qr.make_image(fill_color="black", back_color="white")
-
-            dialog = QDialog(self)
-            self.mobile_qr_dialog = dialog
-            dialog.setWindowTitle("Connect Mobile Device")
-            dialog.setMinimumSize(400, 500)
-
-            layout = QVBoxLayout()
-
-            info_text = f"""
-            <h3>เชื่อมต่อมือถือ / Connect Mobile Device</h3>
-            <p>สแกน QR Code นี้ด้วยกล้องมือถือ</p>
-            <p>Scan this QR code with mobile camera:</p>
-            <p><b>URL:</b> {qr_url}</p>
-            <p><b>IP Address:</b> {self.mobile_server.local_ip}</p>
-            <p><b>Port:</b> {self.mobile_server.port}</p>
-            <p style=\"color: green;\"><b>✓ ระบบพร้อม</b></p>
-            """
-
-            info_label = QLabel(info_text)
-            info_label.setTextFormat(Qt.TextFormat.RichText)
-            info_label.setWordWrap(True)
-            layout.addWidget(info_label)
-
-            buffer = BytesIO()
-            qr_img.save(buffer, format="PNG")
-            pixmap = QPixmap()
-            pixmap.loadFromData(buffer.getvalue())
-
-            qr_label = QLabel()
-            qr_label.setPixmap(pixmap)
-            qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(qr_label)
-
-            btn_layout = QHBoxLayout()
-            close_btn = QPushButton("Close")
-            close_btn.clicked.connect(dialog.accept)
-            btn_layout.addStretch()
-            btn_layout.addWidget(close_btn)
-            layout.addLayout(btn_layout)
-
-            dialog.setLayout(layout)
-            dialog.exec()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error showing QR code: {str(e)}")
-
-    def on_mobile_client_opened(self):
-        """เรียกเมื่อ mobile client เปิดหน้าเว็บ"""
-        logger.info("Mobile client opened")
-        # ปิด QR dialog ถ้ามีและยังเปิดอยู่
-        if hasattr(self, "mobile_qr_dialog") and self.mobile_qr_dialog:
-            try:
-                self.mobile_qr_dialog.accept()
-            except Exception as e:
-                logger.error(f"Error closing QR dialog: {e}")
-
-    def on_mobile_scan_received(self, scan_data):
-        """เรียกเมื่อรับข้อมูลจากการสแกน"""
-        try:
-            logger.info(f"Received scan data: {scan_data}")
-            self.roll_id_input.setText(scan_data)
-            self.dispatch(scan_data)
-        except Exception as e:
-            logger.error(f"Error handling mobile scan: {e}")
-
-    def dispatch(self, code):
-        # ตรวจสอบว่ามีม้วนนี้ในระบบหรือไม่
-        # ลองค้นหาจาก Roll ID ก่อน (เช่น R001)
-        roll = self.storage.get_roll_by_id(code)
-
-        # ถ้าไม่เจอ ลองค้นหาจาก Code (เช่น RM2061506007)
-        if not roll:
-            roll = self.storage.get_roll_by_code(code)
-
-        if not roll:
-            self.status_label.setText(f"❌ ไม่พบม้วนเลข {code} ในระบบ")
-            self.status_label.setStyleSheet(
-                "padding: 10px; background-color: #ffebee; border-radius: 5px; color: red;"
-            )
-            QMessageBox.warning(
-                self,
-                "ไม่พบข้อมูล",
-                f"ไม่พบม้วนเลข {code} ในระบบ\n\nกรุณาตรวจสอบเลขม้วนหรือรับเข้าก่อน",
-            )
+        # ใช้ server จาก MainWindow
+        main_win = self.window()
+        if not hasattr(main_win, 'mobile_server'):
+            QMessageBox.critical(self, "Error", "Mobile server not initialized")
             return
+            
+        qr_url = main_win.mobile_server.url
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        buffer = BytesIO()
+        qr_img.save(buffer, format="PNG")
+        pixmap = QPixmap()
+        pixmap.loadFromData(buffer.getvalue())
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Connect Mobile (Centralized)")
+        l = QVBoxLayout(dialog)
+        img_label = QLabel()
+        img_label.setPixmap(pixmap)
+        l.addWidget(QLabel(f"Scan this URL to connect: {qr_url}"))
+        l.addWidget(img_label)
+        dialog.exec()
 
-        # ตรวจสอบสถานะม้วน
-        if roll.status != "active":
-            self.status_label.setText(f"❌ ม้วนเลข {roll.roll_id} ถูกใช้งานหมดแล้ว")
-            self.status_label.setStyleSheet(
-                "padding: 10px; background-color: #ffebee; border-radius: 5px; color: red;"
-            )
-            QMessageBox.warning(
-                self,
-                "ไม่สามารถเบิกได้",
-                f"ม้วนเลข {roll.roll_id} ถูกใช้งานหมดแล้ว (สถานะ: {roll.status})",
-            )
-            return
+class DispatchQuantityDialog(QDialog):
+    def __init__(self, roll, parent=None):
+        super().__init__(parent)
+        self.roll = roll
+        self.setWindowTitle(f"เบิกออกม้วนผ้า: {roll.roll_id}")
+        self.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(self)
+        
+        # 1. ข้อมูลม้วนผ้าที่กำลังเบิก
+        info_group = QGroupBox("ข้อมูลม้วนผ้า (Roll Info)")
+        info_layout = QFormLayout()
+        info_layout.addRow("Roll ID:", QLabel(f"<b>{roll.roll_id}</b>"))
+        info_layout.addRow("Code:", QLabel(roll.code))
+        info_layout.addRow("Lot No.:", QLabel(roll.lot_no))
+        info_layout.addRow("Color/Width:", QLabel(f"{roll.color} / {roll.width} m"))
+        info_layout.addRow("ความยาวคงเหลือเดิม:", QLabel(f"{roll.length:.2f} m"))
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+        
+        # 2. ข้อมูลการเบิกจ่าย
+        dispatch_group = QGroupBox("รายละเอียดการเบิก (Dispatch Details)")
+        f = QFormLayout()
+        
+        self.dispatch_input = QLineEdit()
+        self.dispatch_input.setPlaceholderText("ระบุความยาวที่ต้องการเบิก...")
+        self.dispatch_input.textChanged.connect(self.update_remaining)
+        
+        self.doc_input = QLineEdit()
+        self.doc_input.setPlaceholderText("เช่น IV66001...")
+        self.doc_input.textChanged.connect(self.update_remaining)
+        
+        self.cus_code_input = QLineEdit()
+        self.cus_code_input.textChanged.connect(self.update_remaining)
+        
+        self.cus_name_input = QLineEdit()
+        self.cus_name_input.textChanged.connect(self.update_remaining)
+        
+        self.remaining_label = QLabel(f"{roll.length:.2f} m")
+        self.remaining_label.setStyleSheet("font-weight: bold; color: blue;")
+        
+        f.addRow("จำนวนที่ต้องการเบิก (Length)*:", self.dispatch_input)
+        f.addRow("เลขที่จ่ายสินค้า (Doc No.):", self.doc_input)
+        f.addRow("รหัสลูกค้า (Customer Code):", self.cus_code_input)
+        f.addRow("ชื่อลูกค้า (Customer Name):", self.cus_name_input)
+        f.addRow("คงเหลือหลังเบิก (Remaining):", self.remaining_label)
+        
+        dispatch_group.setLayout(f)
+        layout.addWidget(dispatch_group)
+        
+        self.btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.btns.accepted.connect(self.accept)
+        self.btns.rejected.connect(self.reject)
+        self.ok_button = self.btns.button(QDialogButtonBox.Ok)
+        layout.addWidget(self.btns)
 
-        # แสดงข้อมูลม้วน
-        self.status_label.setText(
-            f"✓ พบม้วน: {roll.roll_id}\n"
-            f"SKU: {roll.sku} | Lot: {roll.lot}\n"
-            f"ความยาวคงเหลือ: {roll.current_length:.2f} cm"
-        )
-        self.status_label.setStyleSheet(
-            "padding: 10px; background-color: #e8f5e9; border-radius: 5px; color: green;"
-        )
-
-        # เปิด Dialog สำหรับกรอกจำนวนที่เบิก
-        dialog = DispatchQuantityDialog(roll.roll_id, roll.current_length, self)
-
-        if dialog.exec() == QDialog.Accepted:
-            dispatch_length = dialog.get_dispatch_length()
-            self.dispatch_roll(roll, dispatch_length)
-
-    def process_scan(self):
-        """ประมวลผลการสแกน"""
-        scan_input = self.roll_id_input.text().strip()
-
-        if not scan_input:
-            QMessageBox.warning(self, "ข้อผิดพลาด", "กรุณากรอกเลขม้วนหรือสแกน QR Code")
-            return
-
-        self.dispatch(scan_input)
-
-    def dispatch_roll(self, roll, dispatch_length):
-        """เบิกออกม้วนผ้า"""
+    def update_remaining(self):
         try:
-            # คำนวน length คงเหลือ (cm)
-            dispatch_length_value = None
-            remaining_length_value = roll.current_length
-            dispatch_length_str = dispatch_length.strip()
-            if dispatch_length_str:
-                dispatch_length_value = float(dispatch_length_str)
-                remaining_length_value = roll.current_length - dispatch_length_value
-                # ใช้ tolerance เพื่อป้องกัน floating point error
-                if remaining_length_value < 0.01:
-                    remaining_length_value = 0
-            remaining_length_str = f"{remaining_length_value:.2f} cm"
-            status = "active"
-            if remaining_length_value <= 0.01:
-                status = "used"
-
-            # บันทึกการเปลี่ยนแปลง
-            update_fields = {"status": status}
-            if dispatch_length_value is not None:
-                update_fields["current_length"] = remaining_length_value
-            self.storage.update_roll(roll.roll_id, **update_fields)
-
-            # บันทึก log
-            self.storage.add_log(
-                action="dispatch",
-                roll_id=roll.roll_id,
-                details={
-                    "sku": roll.sku,
-                    "lot": roll.lot,
-                    "dispatch_length": dispatch_length_str,
-                    "remaining_length": remaining_length_str,
-                    "status": status,
-                },
-            )
-
-            # แสดงผลลัพธ์
-            result_lines = ["✓ เบิกออกสำเร็จ!", f"เลขม้วน: {roll.roll_id}"]
-            if dispatch_length_str:
-                result_lines.append(f"Length ที่เบิก: {dispatch_length_str} cm")
-                result_lines.append(f"Length คงเหลือ: {remaining_length_str}")
-            result_msg = "\n".join(result_lines)
-
-            self.status_label.setText(result_msg)
-            self.status_label.setStyleSheet(
-                "padding: 10px; background-color: #e3f2fd; border-radius: 5px; color: blue;"
-            )
-
-            QMessageBox.information(self, "สำเร็จ", result_msg)
-
-            # ล้างฟอร์ม
-            self.roll_id_input.clear()
-            self.roll_id_input.setFocus()
-
-            # อัพเดทประวัติ
-            self.load_recent_history()
-
-            # ส่ง signal
-            self.dispatch_completed.emit(
-                {"roll_id": roll.roll_id, "sku": roll.sku, "status": status}
-            )
-
-        except Exception as e:
-            QMessageBox.critical(self, "ข้อผิดพลาด", f"เกิดข้อผิดพลาดในการเบิกออก:\n{str(e)}")
-
-    def load_recent_history(self):
-        """โหลดประวัติการเบิกล่าสุด"""
-        try:
-            # ดึง log ที่เป็น dispatch
-            logs = self.storage.get_logs()
-            dispatch_logs = [log for log in logs if log.action == "dispatch"]
-
-            # เรียงตามเวลาล่าสุด
-            dispatch_logs.sort(key=lambda x: x.timestamp, reverse=True)
-
-            # แสดงแค่ 20 รายการล่าสุด
-            dispatch_logs = dispatch_logs[:20]
-
-            # อัพเดทตาราง
-            self.history_table.setRowCount(len(dispatch_logs))
-
-            for row, log in enumerate(dispatch_logs):
-                details = log.details
-
-                # เวลา
-                if isinstance(log.timestamp, str):
-                    timestamp_str = log.timestamp
+            val = float(self.dispatch_input.text() or 0)
+            rem = self.roll.length - val
+            
+            # ตรวจสอบว่าฟิลด์อื่นๆ ว่างหรือไม่
+            has_all_info = all([
+                self.doc_input.text().strip(),
+                self.cus_code_input.text().strip(),
+                self.cus_name_input.text().strip()
+            ])
+            
+            if val <= 0:
+                self.ok_button.setEnabled(False)
+                self.remaining_label.setText(f"{self.roll.length:.2f} {self.roll.unit}")
+                self.remaining_label.setStyleSheet("font-weight: bold; color: blue;")
+            elif rem < 0:
+                self.remaining_label.setText("เบิกเกินจำนวนที่มี!")
+                self.remaining_label.setStyleSheet("font-weight: bold; color: red;")
+                self.ok_button.setEnabled(False)
+            elif not has_all_info:
+                self.remaining_label.setText("กรุณากรอกข้อมูลให้ครบทุกช่อง*")
+                self.remaining_label.setStyleSheet("font-weight: bold; color: orange;")
+                self.ok_button.setEnabled(False)
+            else:
+                self.remaining_label.setText(f"{rem:.2f} {self.roll.unit}")
+                self.ok_button.setEnabled(True)
+                if rem == 0:
+                    self.remaining_label.setStyleSheet("font-weight: bold; color: orange;")
                 else:
-                    timestamp_str = log.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                time_item = QTableWidgetItem(timestamp_str)
-                self.history_table.setItem(row, 0, time_item)
+                    self.remaining_label.setStyleSheet("font-weight: bold; color: blue;")
+        except:
+            self.remaining_label.setText(f"{self.roll.length:.2f} {self.roll.unit}")
+            self.ok_button.setEnabled(False)
 
-                # เลขม้วน
-                roll_id_item = QTableWidgetItem(log.roll_id)
-                self.history_table.setItem(row, 1, roll_id_item)
-
-                # SKU
-                sku_item = QTableWidgetItem(details.get("sku", ""))
-                self.history_table.setItem(row, 2, sku_item)
-
-                # Length ที่เบิก
-                dispatch_length = details.get("dispatch_length", "")
-                length_item = QTableWidgetItem(dispatch_length)
-                self.history_table.setItem(row, 3, length_item)
-
-                # สถานะ - อ้างอิง length ที่เหลือ
-                remaining_length_str = details.get("remaining_length", "0 cm")
-                remaining_length_value = float(
-                    remaining_length_str.replace("cm", "").strip() or 0
-                )
-
-                if remaining_length_value <= 0:
-                    status_text = "ใช้หมด"
-                    status_color = Qt.red
-                else:
-                    status_text = "ยังใช้ได้"
-                    status_color = Qt.green
-
-                status_item = QTableWidgetItem(status_text)
-                status_item.setForeground(status_color)
-                self.history_table.setItem(row, 4, status_item)
-
-            # ปรับขนาดคอลัมน์
-            self.history_table.resizeColumnsToContents()
-
-        except Exception as e:
-            logger.error(f"Error loading dispatch history: {e}")
+    def get_dispatch_data(self):
+        return {
+            "length": self.dispatch_input.text(),
+            "doc_no": self.doc_input.text(),
+            "cus_code": self.cus_code_input.text(),
+            "cus_name": self.cus_name_input.text()
+        }

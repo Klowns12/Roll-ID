@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from typing import List
-from storage import Roll
+from core.storage import Roll
 import sys
 import os
 import pandas as pd
@@ -172,21 +172,23 @@ class ReportsTab(QWidget):
 
         # Results table
         self.rolls_table = QTableWidget()
-        self.rolls_table.setColumnCount(12)
+        self.rolls_table.setColumnCount(14)
         self.rolls_table.setHorizontalHeaderLabels(
             [
                 "Roll ID",
-                "SKU",
-                "Lot",
+                "Code",
+                "SubPartCode",
+                "SupCode",
+                "Supplier Name",
+                "Description",
+                "Lot No.",
+                "Quantity",
                 "Location",
-                "Grade",
-                "Current Length",
-                "Original Length",
-                "Exist_Qty",
-                "RollStatus",
-                "Status",
-                "Date Received",
-                "Supplier",
+                "Unit",
+                "Color",
+                "Width",
+                "Length",
+                "Status"
             ]
         )
         self.rolls_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -297,54 +299,27 @@ class ReportsTab(QWidget):
             self.load_more_btn.setVisible(False)
 
         for row, roll in enumerate(display_rolls):
-            # สำหรับ rolls ใหม่ (มี Roll ID) ใช้ข้อมูลจาก database เป็นหลัก
-            # เพราะ CSV เป็นข้อมูลเก่าที่ไม่ได้อัปเดตตามการ dispatch
-            supplier = roll.spl_name or ""
-            exist_qty = roll.current_length or 0.0
-
-            # คำนวณสถานะจาก database
-            if exist_qty <= 0:
-                roll_status = "หมด"
-            elif exist_qty >= (roll.original_length or 0.0):
-                roll_status = "เต็มม้วน"
+            self.rolls_table.setItem(row, 0, QTableWidgetItem(str(roll.roll_id)))
+            self.rolls_table.setItem(row, 1, QTableWidgetItem(str(roll.code)))
+            self.rolls_table.setItem(row, 2, QTableWidgetItem(str(roll.sub_part_code)))
+            self.rolls_table.setItem(row, 3, QTableWidgetItem(str(roll.sup_code)))
+            self.rolls_table.setItem(row, 4, QTableWidgetItem(str(roll.supplier_name)))
+            self.rolls_table.setItem(row, 5, QTableWidgetItem(str(roll.description)))
+            self.rolls_table.setItem(row, 6, QTableWidgetItem(str(roll.lot_no)))
+            self.rolls_table.setItem(row, 7, QTableWidgetItem(str(roll.quantity)))
+            self.rolls_table.setItem(row, 8, QTableWidgetItem(str(roll.location)))
+            self.rolls_table.setItem(row, 9, QTableWidgetItem(str(roll.unit)))
+            self.rolls_table.setItem(row, 10, QTableWidgetItem(str(roll.color)))
+            self.rolls_table.setItem(row, 11, QTableWidgetItem(str(roll.width)))
+            self.rolls_table.setItem(row, 12, QTableWidgetItem(f"{roll.length:.2f}"))
+            
+            # Status item
+            status_item = QTableWidgetItem(str(roll.status).capitalize())
+            if str(roll.status).lower() == 'active':
+                status_item.setForeground(Qt.GlobalColor.darkGreen)
             else:
-                roll_status = "เศษ"
-
-            # ดึงข้อมูล supplier เฉพาะส่วนที่ไม่ใช่ Exist_Qty และ RollStatus
-            try:
-                supplier_data = self.suppliers_manager.search_by_code(roll.sku)
-                if supplier_data:
-                    # ดึง supplier name จาก CSV ถ้าไม่มีใน roll
-                    if not supplier:
-                        if "Suppliers" in supplier_data:
-                            supplier = str(supplier_data.get("Suppliers", ""))
-                        else:
-                            keys = list(supplier_data.keys())
-                            if len(keys) > 1:
-                                supplier = str(supplier_data.get(keys[1], ""))
-
-                    # Debug: แสดงชื่อคอลัมน์ทั้งหมด (เฉพาะแถวแรก)
-                    if row == 0:
-                        logger.debug(f"Available columns: {list(supplier_data.keys())}")
-            except:
-                pass
-
-            self.rolls_table.setItem(row, 0, QTableWidgetItem(roll.roll_id))
-            self.rolls_table.setItem(row, 1, QTableWidgetItem(roll.sku))
-            self.rolls_table.setItem(row, 2, QTableWidgetItem(roll.lot))
-            self.rolls_table.setItem(row, 3, QTableWidgetItem(roll.location))
-            self.rolls_table.setItem(row, 4, QTableWidgetItem(roll.grade))
-            self.rolls_table.setItem(
-                row, 5, QTableWidgetItem(f"{roll.current_length:.2f}")
-            )
-            self.rolls_table.setItem(
-                row, 6, QTableWidgetItem(f"{roll.original_length:.2f}")
-            )
-            self.rolls_table.setItem(row, 7, QTableWidgetItem(f"{exist_qty:.2f}"))
-            self.rolls_table.setItem(row, 8, QTableWidgetItem(roll_status))
-            self.rolls_table.setItem(row, 9, QTableWidgetItem(roll.status))
-            self.rolls_table.setItem(row, 10, QTableWidgetItem(roll.date_received))
-            self.rolls_table.setItem(row, 11, QTableWidgetItem(supplier))
+                status_item.setForeground(Qt.GlobalColor.darkRed)
+            self.rolls_table.setItem(row, 13, status_item)
 
         self.rolls_table.resizeColumnsToContents()
 
@@ -376,40 +351,22 @@ class ReportsTab(QWidget):
             # Prepare data for DataFrame
             data = []
             for roll in self.filtered_rolls:
-                # Get supplier info (similar to table display logic)
-                supplier = ""
-                exist_qty = roll.current_length
-                roll_status = (
-                    "เต็มม้วน" if roll.current_length >= roll.original_length else "เศษ"
-                )
-
-                try:
-                    supplier_data = self.suppliers_manager.search_by_code(roll.sku)
-                    if supplier_data:
-                        if "Suppliers" in supplier_data:
-                            supplier = str(supplier_data.get("Suppliers", ""))
-                        else:
-                            keys = list(supplier_data.keys())
-                            if len(keys) > 1:
-                                supplier = str(supplier_data.get(keys[1], ""))
-
-                        # Logic for Exist Qty and Status from Supplier data could be repeated here
-                        # For simplicity, using current roll data + supplier name
-                except:
-                    pass
-
                 data.append(
                     {
                         "Roll ID": roll.roll_id,
-                        "SKU": roll.sku,
-                        "Lot": roll.lot,
+                        "Code": roll.code,
+                        "Sub Part Code": roll.sub_part_code,
+                        "Sup Code": roll.sup_code,
+                        "Supplier Name": roll.supplier_name,
+                        "Description": roll.description,
+                        "Lot No.": roll.lot_no,
+                        "Quantity": roll.quantity,
                         "Location": roll.location,
-                        "Grade": roll.grade,
-                        "Current Length": roll.current_length,
-                        "Original Length": roll.original_length,
+                        "Unit": roll.unit,
+                        "Color": roll.color,
+                        "Width": roll.width,
+                        "Length": roll.length,
                         "Status": roll.status,
-                        "Date Received": roll.date_received,
-                        "Supplier": supplier,
                     }
                 )
 

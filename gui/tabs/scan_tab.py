@@ -1,117 +1,56 @@
-import logging
-
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGroupBox,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
-    QTabWidget,
-    QFormLayout,
-    QComboBox,
-    QDateEdit,
-    QDoubleSpinBox,
-)
-from PySide6.QtCore import Qt, QDate, Signal as pyqtSignal, QObject, QTimer
-from PySide6.QtGui import QPixmap
-from datetime import datetime
-import re
 import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-logger = logging.getLogger(__name__)
-
 from io import BytesIO
-import json
-from datetime import datetime
-
-import os
-
 import qrcode
-
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-import sys
-import pandas as pd
-
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from utils.label_generator import LabelGenerator
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QPushButton,
+    QLineEdit, QTableWidget, QTableWidgetItem, QTabWidget, QMessageBox,
+    QHeaderView, QFormLayout, QDoubleSpinBox, QDateEdit, QDialog
+)
+from PySide6.QtCore import Signal as pyqtSignal, QDate
 from utils.roll_id_generator import RollIDGenerator
-from utils.master_suppliers_manager import MasterSuppliersManager
-from storage import Roll
+from utils.suppliers_manager import SuppliersManager
 
+# Import Controller
+from controllers.scan_controller import ScanController
 
 class ScanTab(QWidget):
-    scan_received = pyqtSignal(dict)
     refresh_reports = pyqtSignal()
 
-    def __init__(self, storage):
+    def __init__(self, storage, current_user=None):
         super().__init__()
         self.storage = storage
-        self.label_generator = LabelGenerator()
-
-        # Initialize Roll ID Generator
-        data_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data"
-        )
+        self.current_user = current_user
+        
+        data_dir = os.path.join(os.getcwd(), "data")
         self.roll_id_generator = RollIDGenerator(data_dir)
-
-        self.suppliers_manager = MasterSuppliersManager()
-
+        self.suppliers_manager = SuppliersManager()
+        self.controller = ScanController(self, storage, self.roll_id_generator, self.suppliers_manager)
+        
         self.setup_ui()
 
-        # Connect signals
-        self.scan_received.connect(self.on_scan_received)
-
     def setup_ui(self):
-        """Set up the Scan QR tab UI"""
+        """Set up the Scan QR tab UI - 100% Mirroring RollOld"""
         layout = QVBoxLayout(self)
-
-        # Create tab widget
         self.tabs = QTabWidget()
-
-        # Create tabs
-        self.device_tab = self.create_device_tab()
-        self.master_tab = self.create_master_tab()
-
-        # Add tabs
-        self.tabs.addTab(self.device_tab, "Scan Device")
-        self.tabs.addTab(self.master_tab, "Scan from Master")
-
-        # Add tabs to layout
-        layout.addWidget(self.tabs)
-
-    def create_device_tab(self):
-        """Create the device scanning tab"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        # Connection status group
+        
+        # --- Tab 1: Scan Device ---
+        self.device_tab = QWidget()
+        dev_layout = QVBoxLayout(self.device_tab)
+        
         status_group = QGroupBox("สถานะการเชื่อมต่อ / Connection Status")
         status_layout = QHBoxLayout()
-
-        # Status indicator
-        self.device_status_label = QLabel("● ไม่เชื่อมต่อ / Disconnected")
-        self.device_status_label.setStyleSheet("color: red; font-weight: bold;")
-
-        # Check connection button
-        check_btn = QPushButton("ตรวจสอบการเชื่อมต่อ / Check Connection")
-        check_btn.clicked.connect(self.check_device_connection)
-
-        status_layout.addWidget(self.device_status_label)
+        self.status_label = QLabel("● ไม่เชื่อมต่อ / Disconnected")
+        self.status_label.setStyleSheet("color: red; font-weight: bold;")
+        
+        self.check_btn = QPushButton("ตรวจสอบการเชื่อมต่อ / Check Connection")
+        self.check_btn.clicked.connect(self.controller.check_device_connection)
+        
+        status_layout.addWidget(self.status_label)
         status_layout.addStretch()
-        status_layout.addWidget(check_btn)
+        status_layout.addWidget(self.check_btn)
         status_group.setLayout(status_layout)
-
-        # Import instructions
+        
         instructions = QLabel(
             "สแกนเครื่องสแกนเพื่อรับม้วน / Scan device to receive roll. Please use the external scanner to scan the file.\n"
             "ไฟล์ควรมีคอลัมน์ต่อไปนี้ / The file should contain the following columns:\n"
@@ -125,460 +64,176 @@ class ScanTab(QWidget):
             "- notes (optional): Any additional notes"
         )
         instructions.setWordWrap(True)
+        instructions.setStyleSheet("color: #555; background-color: #f0f0f0; padding: 10px; border-radius: 5px;")
 
-        # Import button
+        self.mobile_btn = QPushButton("📱 Connect Mobile Scanner (สแกนผ่านมือถือ)")
+        self.mobile_btn.clicked.connect(self.show_mobile_connection_qr)
+        self.mobile_btn.setStyleSheet("height: 40px; background-color: #1976d2; color: white; font-weight: bold;")
+        
         self.import_btn = QPushButton("สแกนเครื่องสแกน / Scan Device...")
-        self.import_btn.clicked.connect(self.scan_device)
-
-        # Preview table
-        self.import_table = QTableWidget()
-        self.import_table.setColumnCount(8)
-        self.import_table.setHorizontalHeaderLabels(
+        self.import_btn.clicked.connect(self.controller.handle_file_import)
+        self.import_btn.setStyleSheet("height: 40px; font-weight: bold;")
+        
+        self.preview_table = QTableWidget()
+        self.preview_table.setColumnCount(8)
+        self.preview_table.setHorizontalHeaderLabels(
             ["SKU", "Lot", "Length", "Width", "Grade", "Location", "Date", "Status"]
         )
-        self.import_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.import_table.verticalHeader().setVisible(False)
-        self.import_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-        # Add to layout
-        layout.addWidget(status_group)
-        layout.addWidget(instructions)
-        layout.addWidget(self.import_btn)
-        layout.addWidget(self.import_table)
-
-        return tab
-
-    def create_master_tab(self):
-        """Create the scan from master tab"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-
-        # Search group
+        self.preview_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.preview_table.verticalHeader().setVisible(False)
+        self.preview_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        
+        dev_layout.addWidget(status_group)
+        dev_layout.addWidget(instructions)
+        dev_layout.addWidget(self.mobile_btn)
+        dev_layout.addWidget(self.import_btn)
+        dev_layout.addWidget(self.preview_table)
+        
+        # --- Tab 2: Scan from Master ---
+        self.master_tab = QWidget()
+        master_layout = QVBoxLayout(self.master_tab)
+        
         search_group = QGroupBox("Search Master Data")
         search_layout = QHBoxLayout()
-
+        
         search_layout.addWidget(QLabel("Code/SKU:"))
         self.master_search_code = QLineEdit()
         self.master_search_code.setPlaceholderText("Enter product code...")
-        self.master_search_code.textChanged.connect(self.search_master_data)
+        self.master_search_code.textChanged.connect(self.on_search)
         search_layout.addWidget(self.master_search_code)
-
+        
         search_layout.addWidget(QLabel("Supplier:"))
         self.master_search_supplier = QLineEdit()
         self.master_search_supplier.setPlaceholderText("Enter supplier name...")
-        self.master_search_supplier.textChanged.connect(self.search_master_data)
+        self.master_search_supplier.textChanged.connect(self.on_search)
         search_layout.addWidget(self.master_search_supplier)
-
+        
         search_group.setLayout(search_layout)
-        layout.addWidget(search_group)
-
-        # Master data table
-        self.master_data_table = QTableWidget()
-        self.master_data_table.setColumnCount(7)
-        self.master_data_table.setHorizontalHeaderLabels(
+        master_layout.addWidget(search_group)
+        
+        self.master_table = QTableWidget()
+        self.master_table.setColumnCount(7)
+        self.master_table.setHorizontalHeaderLabels(
             ["Code", "Supplier", "Description", "Location", "Unit", "Select", ""]
         )
-        self.master_data_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.master_data_table.verticalHeader().setVisible(False)
-        self.master_data_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
-        self.master_data_table.setSelectionMode(
-            QTableWidget.SelectionMode.SingleSelection
-        )
-        layout.addWidget(self.master_data_table)
-
-        # Form group for roll details
-        form_group = QGroupBox("Roll Details")
+        self.master_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.master_table.verticalHeader().setVisible(False)
+        self.master_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.master_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        master_layout.addWidget(self.master_table, 1)
+        
+        self.form_group = QGroupBox("Roll Details")
+        self.form_group.setEnabled(False)
         form_layout = QFormLayout()
-
+        
         self.master_lot = QLineEdit()
         self.master_lot.setPlaceholderText("e.g., LOT2023-001")
         form_layout.addRow("Lot No.*:", self.master_lot)
-
+        
         self.master_length = QDoubleSpinBox()
         self.master_length.setRange(0.01, 10000.0)
         self.master_length.setValue(100.0)
         self.master_length.setSuffix(" m")
         self.master_length.setDecimals(2)
         form_layout.addRow("Length*:", self.master_length)
-
+        
         self.master_location = QLineEdit()
         self.master_location.setPlaceholderText("e.g., Warehouse A, Rack 1")
         form_layout.addRow("Location:", self.master_location)
-
+        
         self.master_date = QDateEdit()
         self.master_date.setCalendarPopup(True)
         self.master_date.setDate(QDate.currentDate())
         form_layout.addRow("Date Received:", self.master_date)
-
-        form_group.setLayout(form_layout)
-        layout.addWidget(form_group)
-
-        # Buttons
+        
+        self.form_group.setLayout(form_layout)
+        master_layout.addWidget(self.form_group)
+        
         btn_layout = QHBoxLayout()
-
         self.master_clear_btn = QPushButton("Clear")
         self.master_clear_btn.clicked.connect(self.clear_master_form)
-
+        self.master_clear_btn.setStyleSheet("height: 40px; width: 100px;")
+        
         self.master_submit_btn = QPushButton("Save Roll")
-        self.master_submit_btn.clicked.connect(self.submit_master_form)
-
+        self.master_submit_btn.clicked.connect(self.controller.submit_master_roll)
+        self.master_submit_btn.setStyleSheet("height: 40px; width: 150px; background-color: #2e7d32; color: white; font-weight: bold;")
+        
         btn_layout.addStretch()
         btn_layout.addWidget(self.master_clear_btn)
         btn_layout.addWidget(self.master_submit_btn)
+        master_layout.addLayout(btn_layout)
+        
+        self.tabs.addTab(self.device_tab, "Scan Device")
+        self.tabs.addTab(self.master_tab, "Scan from Master")
+        layout.addWidget(self.tabs)
 
-        layout.addLayout(btn_layout)
-        layout.addStretch()
-
-        return tab
-
-    def search_master_data(self):
-        """Search master data and display results"""
+    def on_search(self):
         code_query = self.master_search_code.text().strip()
         supplier_query = self.master_search_supplier.text().strip()
-
-        # Search using suppliers manager
         results = self.suppliers_manager.search_combined(supplier_query, code_query)
-
-        # Display results in table
-        self.master_data_table.setRowCount(len(results))
-
-        for row, item in enumerate(results):
-            # Code
-            code = item.get("pdt_code") or item.get("Code") or item.get("code") or ""
-            self.master_data_table.setItem(row, 0, QTableWidgetItem(str(code)))
-
-            # Supplier
-            supplier = item.get("spl_name") or ""
-            self.master_data_table.setItem(row, 1, QTableWidgetItem(str(supplier)))
-
-            # Description
-            desc = item.get("Description") or item.get("description") or ""
-            self.master_data_table.setItem(row, 2, QTableWidgetItem(str(desc)))
-
-            # Location
-            location = item.get("Location") or item.get("location") or ""
-            self.master_data_table.setItem(row, 3, QTableWidgetItem(str(location)))
-
-            # Unit
-            unit = item.get("Unit") or item.get("unit") or "MTS"
-            self.master_data_table.setItem(row, 4, QTableWidgetItem(str(unit)))
-
-            # Select button
-            select_btn = QPushButton("Select")
-            select_btn.clicked.connect(lambda checked, r=row: self.select_master_row(r))
-            self.master_data_table.setCellWidget(row, 5, select_btn)
-
-    def select_master_row(self, row):
-        """Select a row from master data"""
-        code = self.master_data_table.item(row, 0).text()
-        supplier = self.master_data_table.item(row, 1).text()
-
-        # You can populate the form with selected data if needed
-        QMessageBox.information(self, "Selected", f"Code: {code}\nSupplier: {supplier}")
+        self.master_table.setRowCount(0)
+        for item in results:
+            r = self.master_table.rowCount()
+            self.master_table.insertRow(r)
+            self.master_table.setItem(r, 0, QTableWidgetItem(str(item.get('Code', item.get('pdt_code', '')))))
+            self.master_table.setItem(r, 1, QTableWidgetItem(str(item.get('Supplier Name', item.get('spl_name', '')))))
+            self.master_table.setItem(r, 2, QTableWidgetItem(str(item.get('Description', item.get('pdt_name', '')))))
+            self.master_table.setItem(r, 3, QTableWidgetItem(str(item.get('Location', ''))))
+            self.master_table.setItem(r, 4, QTableWidgetItem(str(item.get('Unit', 'MTS'))))
+            
+            btn = QPushButton("Select")
+            btn.clicked.connect(lambda checked, i=item: self.controller.select_master_item(i))
+            self.master_table.setCellWidget(r, 5, btn)
 
     def clear_master_form(self):
-        """Clear the master form"""
         self.master_lot.clear()
         self.master_length.setValue(100.0)
         self.master_location.clear()
         self.master_date.setDate(QDate.currentDate())
+        self.form_group.setEnabled(False)
 
-    def submit_master_form(self):
-        """Submit the master form and save roll"""
-        lot = self.master_lot.text().strip()
-        length = self.master_length.value()
-        location = self.master_location.text().strip()
-        date_str = self.master_date.date().toString("yyyy-MM-dd")
+    def update_connection_status(self, connected, device=""):
+        if connected:
+            self.status_label.setText(f"● เชื่อมต่อแล้ว / Connected: {device}")
+            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+        else:
+            self.status_label.setText("● ไม่เชื่อมต่อ / Disconnected")
+            self.status_label.setStyleSheet("color: red; font-weight: bold;")
 
-        if not lot:
-            QMessageBox.warning(self, "Error", "Please enter Lot No.")
+    def display_preview(self, df):
+        self.preview_table.setRowCount(len(df))
+        for i, row in df.iterrows():
+            self.preview_table.setItem(i, 0, QTableWidgetItem(str(row.get('sku', ''))))
+            self.preview_table.setItem(i, 1, QTableWidgetItem(str(row.get('lot', ''))))
+            self.preview_table.setItem(i, 2, QTableWidgetItem(str(row.get('length', ''))))
+            self.preview_table.setItem(i, 3, QTableWidgetItem(str(row.get('width', ''))))
+            self.preview_table.setItem(i, 4, QTableWidgetItem(str(row.get('grade', 'A'))))
+            self.preview_table.setItem(i, 5, QTableWidgetItem(str(row.get('location', ''))))
+            self.preview_table.setItem(i, 6, QTableWidgetItem(str(row.get('date_received', ''))))
+            self.preview_table.setItem(i, 7, QTableWidgetItem("Valid"))
+        
+        if QMessageBox.question(self, "ยืนยัน", f"Import {len(df)} rolls?") == QMessageBox.StandardButton.Yes:
+            self.controller.submit_imported_data(df)
+
+    def show_mobile_connection_qr(self):
+        main_win = self.window()
+        if not hasattr(main_win, 'mobile_server'):
+            QMessageBox.critical(self, "Error", "Mobile Server not found")
             return
-
-        # Create roll data
-        roll_data = {
-            "sku": "MASTER",
-            "lot": lot,
-            "length": length,
-            "location": location,
-            "grade": "A",
-            "date_received": date_str,
-        }
-
-        self.scan_received.emit(roll_data)
-        self.clear_master_form()
-
-    def on_scan_received(self, scan_data):
-        """Handle a QR code scan from a mobile device"""
-        try:
-            logger.debug(f"--------on_scan_received----------")
-            logger.debug(scan_data)
-            datas = scan_data.split("%")
-            logger.debug(datas)
-
-            roll = Roll(
-                roll_id=datas[0],
-                sku=datas[1],
-                lot=datas[6],
-                current_length=0.0,
-                original_length=0.0,
-                width=0.0,
-                grade="-",
-                location=datas[7],
-                date_received=datetime.now().strftime("%Y-%m-%d"),
-            )
-
-            self.storage.add_roll(roll)
-            self.add_mobile_record(roll)
-
-            QMessageBox.information(self, "Success", f"Roll {1} saved successfully!")
-
-            # Emit signal to refresh reports
-            self.refresh_reports.emit()
-
-        except Exception as e:
-            QMessageBox.critical(
-                self, "Error", f"Error processing scanned data: {str(e)}"
-            )
-
-    def extract_roll_data(self, text):
-        """Try to extract roll data from text"""
-        roll_id_match = re.search(r"ROLL[-_]?\d+", text, re.IGNORECASE)
-
-        if not roll_id_match:
-            return None
-
-        sku_match = re.search(r"SKU[:\s]?([A-Z0-9-]+)", text, re.IGNORECASE)
-        lot_match = re.search(r"LOT[:\s]?([A-Z0-9-]+)", text, re.IGNORECASE)
-        length_match = re.search(r"LENGTH[:\s]?(\d+(?:\.\d+)?)", text, re.IGNORECASE)
-
-        return {
-            "roll_id": roll_id_match.group(0).upper(),
-            "sku": sku_match.group(1).upper() if sku_match else "UNKNOWN",
-            "lot": lot_match.group(1).upper() if lot_match else "UNKNOWN",
-            "length": float(length_match.group(1)) if length_match else 0.0,
-            "location": "",
-            "grade": "A",
-            "date_received": datetime.now().strftime("%Y-%m-%d"),
-        }
-
-    def check_device_connection(self):
-        """ตรวจสอบสถานะการเชื่อมต่อเครื่องสแกน / Check scanner device connection status"""
-        try:
-            # ตรวจสอบพอร์ต COM ที่ใช้บ่อย
-            import serial.tools.list_ports
-
-            ports = list(serial.tools.list_ports.comports())
-
-            if ports:
-                # พบเครื่องสแกน
-                port_info = ports[0]
-                self.device_status_label.setText(
-                    f"● เชื่อมต่อแล้ว / Connected: {port_info.device}"
-                )
-                self.device_status_label.setStyleSheet(
-                    "color: green; font-weight: bold;"
-                )
-                self.import_btn.setEnabled(True)
-
-                QMessageBox.information(
-                    self,
-                    "สำเร็จ / Success",
-                    f"เชื่อมต่อเครื่องสแกนสำเร็จ\n\nConnected to scanner:\n{port_info.device}\n{port_info.description}",
-                )
-            else:
-                # ไม่พบเครื่องสแกน
-                self.device_status_label.setText("● ไม่เชื่อมต่อ / Disconnected")
-                self.device_status_label.setStyleSheet("color: red; font-weight: bold;")
-                self.import_btn.setEnabled(False)
-
-                QMessageBox.warning(
-                    self,
-                    "ข้อผิดพลาด / Error",
-                    "ไม่พบเครื่องสแกน\n\nNo scanner device found.\nPlease connect your scanner device.",
-                )
-        except ImportError:
-            # ถ้าไม่มี pyserial ให้แสดงข้อความ
-            QMessageBox.warning(
-                self,
-                "ข้อผิดพลาด / Error",
-                "ไม่สามารถตรวจสอบเครื่องสแกนได้\n\nCannot check scanner connection.\nPlease install pyserial: pip install pyserial",
-            )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "ข้อผิดพลาด / Error",
-                f"เกิดข้อผิดพลาดในการตรวจสอบ:\n\nError checking connection:\n{str(e)}",
-            )
-
-    def scan_device(self):
-        """Scan device to receive roll"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Device File", "", "CSV Files (*.csv)"
-        )
-        if file_path:
-            self.import_from_file(file_path)
-
-    def import_from_file(self):
-        """Import rolls from a file"""
-        import pandas as pd
-
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Import Rolls", "", "CSV Files (*.csv);;Excel Files (*.xlsx *.xls)"
-        )
-
-        if not file_path:
-            return  # User cancelled
-
-        try:
-            # Read file based on extension
-            if file_path.endswith((".xlsx", ".xls")):
-                df = pd.read_excel(file_path)
-            else:
-                df = pd.read_csv(file_path)
-
-            # Normalize column names (lowercase, strip whitespace)
-            df.columns = df.columns.str.lower().str.strip()
-
-            # Check required columns
-            required_columns = ["sku", "lot", "length"]
-            available_columns = [col.lower().strip() for col in df.columns]
-            missing_columns = [
-                col for col in required_columns if col not in available_columns
-            ]
-
-            if missing_columns:
-                QMessageBox.critical(
-                    self,
-                    "Import Error",
-                    f"Missing required columns: {', '.join(missing_columns)}\n\n"
-                    f"Required columns: roll_id (optional), sku, lot, length\n"
-                    f"Optional columns: grade, location, date_received",
-                )
-                return
-
-            # Update preview table
-            self.import_table.setRowCount(len(df))
-
-            for i, row in df.iterrows():
-                # Add data to table
-                self.import_table.setItem(
-                    i, 0, QTableWidgetItem(str(row.get("sku", "")))
-                )
-                self.import_table.setItem(
-                    i, 1, QTableWidgetItem(str(row.get("lot", "")))
-                )
-                self.import_table.setItem(
-                    i, 2, QTableWidgetItem(str(row.get("length", "")))
-                )
-                self.import_table.setItem(
-                    i, 3, QTableWidgetItem(str(row.get("width", "")))
-                )
-                self.import_table.setItem(
-                    i, 4, QTableWidgetItem(str(row.get("grade", "A")))
-                )
-                self.import_table.setItem(
-                    i, 5, QTableWidgetItem(str(row.get("location", "")))
-                )
-                self.import_table.setItem(
-                    i, 6, QTableWidgetItem(str(row.get("date_received", "")))
-                )
-
-                # Validate row
-                is_valid = all(
-                    str(row.get(col, "")).strip() for col in required_columns
-                )
-                status = "Valid" if is_valid else "Missing required fields"
-
-                status_item = QTableWidgetItem(status)
-                if is_valid:
-                    status_item.setForeground(Qt.GlobalColor.darkGreen)
-                else:
-                    status_item.setForeground(Qt.GlobalColor.red)
-
-                self.import_table.setItem(i, 7, status_item)
-
-            # Enable import button if there are valid rows
-            valid_rows = sum(
-                1
-                for i in range(self.import_table.rowCount())
-                if self.import_table.item(i, 7).text() == "Valid"
-            )
-
-            if valid_rows > 0:
-                if (
-                    QMessageBox.question(
-                        self,
-                        "Import Confirmation",
-                        f"Import {valid_rows} valid roll(s)?",
-                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    )
-                    == QMessageBox.StandardButton.Yes
-                ):
-                    self.process_import(df[df[required_columns].notna().all(axis=1)])
-            else:
-                QMessageBox.warning(
-                    self,
-                    "Import",
-                    "No valid rows to import. Please check your file and try again.",
-                )
-
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Import Error",
-                f"An error occurred while importing the file:\n{str(e)}",
-            )
-
-    def process_import(self, df):
-        """Process the imported data and add rolls to storage"""
-        import pandas as pd
-
-        success_count = 0
-
-        for idx, row in df.iterrows():
-            try:
-                # Get or generate roll ID
-                if "roll_id" in df.columns and str(row.get("roll_id", "")).strip():
-                    roll_id = str(row["roll_id"]).strip().upper()
-                else:
-                    # Generate roll ID automatically
-                    roll_id = self.roll_id_generator.get_next_roll_id()
-
-                sku = str(row["sku"]).strip().upper()
-                lot = str(row["lot"]).strip().upper()
-
-                # Create roll data
-                roll_data = {
-                    "roll_id": roll_id,
-                    "sku": sku,
-                    "lot": lot,
-                    "length": float(row["length"]),
-                    "grade": str(row.get("grade", "A")).upper(),
-                    "location": str(row.get("location", "")).strip(),
-                    "date_received": str(
-                        row.get("date_received", datetime.now().strftime("%Y-%m-%d"))
-                    ),
-                }
-
-                # Emit signal with roll data
-                self.scan_received.emit(roll_data)
-                success_count += 1
-
-            except Exception as e:
-                logger.error(f"Error importing row {idx}: {str(e)}")
-
-        # Show results
-        QMessageBox.information(
-            self,
-            "Import Complete",
-            f"Successfully imported {success_count} out of {len(df)} rolls.",
-        )
-
-        # Clear the table
-        self.import_table.setRowCount(0)
+        qr_url = main_win.mobile_server.url
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        buffer = BytesIO()
+        qr_img.save(buffer, format="PNG")
+        pixmap = QPixmap()
+        pixmap.loadFromData(buffer.getvalue())
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Connect Mobile Scanner")
+        l = QVBoxLayout(dialog)
+        l.addWidget(QLabel(f"Scan this URL: {qr_url}"))
+        img_label = QLabel()
+        img_label.setPixmap(pixmap)
+        l.addWidget(img_label)
+        dialog.exec()

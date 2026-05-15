@@ -29,11 +29,9 @@ class MasterTab(QWidget):
             ("spl_code", "spl_code"),
         ]
         self.column_keys = [key for _, key in self.columns]
-        self.master_df = pd.DataFrame(columns=self.column_keys)
-        root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        self.master_data_path = os.path.join(root_dir, "MasterDATA.csv")
-        if not os.path.exists(self.master_data_path):
-            self.master_df.to_csv(self.master_data_path, index=False, encoding='utf-8-sig')
+        # Remove pandas-based internal storage, use list of MasterProduct
+        self.master_products = [] 
+        
         self.setup_ui()
         self.load_data()
     
@@ -84,11 +82,17 @@ class MasterTab(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setSortingEnabled(True)
+        
+        # Status label for counts
+        self.count_label = QLabel("Total: 0 items")
+        self.count_label.setStyleSheet("font-weight: bold; color: #555; margin-top: 5px;")
         
         # Add widgets to layout
         layout.addLayout(search_layout)
         layout.addLayout(btn_layout)
         layout.addWidget(self.table)
+        layout.addWidget(self.count_label)
         
         # Set column widths
         default_widths = {
@@ -112,56 +116,49 @@ class MasterTab(QWidget):
             self.table.setColumnWidth(idx, default_widths.get(label, 120))
     
     def load_data(self):
-        """Load master data from CSV and populate the table"""
-        self.master_df = self._read_master_dataframe()
-        self._refresh_table()
-
-    def _read_master_dataframe(self):
-        """Return normalized dataframe from MasterDATA.csv"""
-        if not os.path.exists(self.master_data_path):
-            QMessageBox.warning(self, "Missing Master Data", f"ไม่พบไฟล์ MasterDATA.csv ที่\n{self.master_data_path}")
-            return pd.DataFrame(columns=self.column_keys)
-
+        """Load master data from database and populate the table"""
         try:
-            df = pd.read_csv(self.master_data_path, encoding='utf-8-sig')
-        except UnicodeDecodeError:
-            df = pd.read_csv(self.master_data_path, encoding='windows-1252')
+            self.master_products = self.storage.get_all_master_products()
+            self._refresh_table()
         except Exception as e:
-            QMessageBox.critical(self, "Import Error", f"ไม่สามารถอ่านไฟล์ MasterDATA.csv ได้:\n{e}")
-            return pd.DataFrame(columns=self.column_keys)
-
-        return self._normalize_dataframe(df)
-
-    def _normalize_dataframe(self, df):
-        df = df.copy()
-        df.columns = df.columns.str.strip().str.lower()
-        for key in self.column_keys:
-            if key not in df.columns:
-                df[key] = ""
-        return df[self.column_keys].reset_index(drop=True)
-
-    def _save_master_data(self):
-        try:
-            save_df = self.master_df[self.column_keys].copy()
-            save_df.to_csv(self.master_data_path, index=False, encoding='utf-8-sig')
-        except Exception as e:
-            QMessageBox.critical(self, "Save Error", f"ไม่สามารถบันทึกไฟล์ MasterDATA.csv ได้:\n{e}")
+            QMessageBox.critical(self, "Load Error", f"ไม่สามารถโหลดข้อมูลจากฐานข้อมูลได้:\n{e}")
 
     def _refresh_table(self):
+        self.table.setSortingEnabled(False)  # ปิดชั่วคราวขณะโหลดข้อมูล
         self.table.setRowCount(0)
-        for idx, row in self.master_df.iterrows():
+        
+        # เรียงลำดับเริ่มต้นตาม pdt_code
+        sorted_products = sorted(self.master_products, key=lambda x: x.pdt_code)
+        
+        for product in sorted_products:
             table_row = self.table.rowCount()
             self.table.insertRow(table_row)
+            
+            product_dict = product.to_dict()
+            
             for col_idx, (_, column_key) in enumerate(self.columns):
-                value = row.get(column_key, "")
-                if pd.isna(value):
-                    value = ""
-                item = QTableWidgetItem(str(value))
+                value = product_dict.get(column_key, "")
+                item = QTableWidgetItem()
+                
+                # ถ้าเป็นคอลัมน์ตัวเลข ให้เก็บข้อมูลเป็นตัวเลขเพื่อให้ Sort ถูกต้อง
+                if column_key == "scrapqty":
+                    try:
+                        num_val = float(value) if value is not None and str(value).strip() != "" else 0.0
+                        item.setData(Qt.ItemDataRole.EditRole, num_val)
+                    except:
+                        item.setText(str(value))
+                else:
+                    item.setText(str(value))
+                
                 if col_idx == 0:
-                    item.setData(Qt.ItemDataRole.UserRole, idx)
+                    item.setData(Qt.ItemDataRole.UserRole, product.pdt_code)
+                
                 self.table.setItem(table_row, col_idx, item)
+        
+        self.table.setSortingEnabled(True)  # เปิดใช้งาน Sort หลังจากโหลดเสร็จ
+        self.count_label.setText(f"Total: {len(sorted_products)} items")
 
-    def _get_selected_df_index(self):
+    def _get_selected_pdt_code(self):
         selected = self.table.selectedItems()
         if not selected:
             return None
@@ -184,56 +181,69 @@ class MasterTab(QWidget):
                     break
             
             self.table.setRowHidden(row, not match)
+        
+        # Update count label for filtered results
+        visible_rows = sum(1 for row in range(self.table.rowCount()) if not self.table.isRowHidden(row))
+        total_rows = self.table.rowCount()
+        if search_text:
+            self.count_label.setText(f"Showing: {visible_rows} of {total_rows} items")
+        else:
+            self.count_label.setText(f"Total: {total_rows} items")
     
     def add_product(self):
-        """Add new master data row"""
+        """Add new master data to database"""
         dialog = MasterDataDialog(self.columns, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_record = dialog.get_data()
             pdt_code = new_record.get('pdt_code', '').strip()
-            if pdt_code and not self.master_df[self.master_df['pdt_code'] == pdt_code].empty:
-                QMessageBox.warning(self, "Duplicate", f"พบ pdt_code ซ้ำ: {pdt_code}")
+            
+            # Check for duplicate in current list
+            if any(p.pdt_code == pdt_code for p in self.master_products):
+                QMessageBox.warning(self, "Duplicate", f"พบ pdt_code ซ้ำในระบบ: {pdt_code}")
                 return
 
-            row = {key: new_record.get(key, "") for key in self.column_keys}
-            self.master_df = pd.concat([
-                self.master_df,
-                pd.DataFrame([row])
-            ], ignore_index=True)
-            self.master_df = self.master_df.reset_index(drop=True)
-            self._save_master_data()
-            self._refresh_table()
-            QMessageBox.information(self, "Success", "เพิ่มข้อมูลสำเร็จ")
+            if self.storage.add_master_product(new_record):
+                self.load_data() # Reload from DB
+                QMessageBox.information(self, "Success", "เพิ่มข้อมูลสำเร็จ")
+            else:
+                QMessageBox.warning(self, "Error", "ไม่สามารถเพิ่มข้อมูลลงฐานข้อมูลได้")
     
     def edit_product(self):
-        """Edit selected product"""
-        df_index = self._get_selected_df_index()
-        if df_index is None:
+        """Edit selected product in database"""
+        pdt_code = self._get_selected_pdt_code()
+        if pdt_code is None:
             QMessageBox.warning(self, "No Selection", "Please select a product to edit.")
             return
-        current_data = self.master_df.loc[df_index, self.column_keys].to_dict()
+            
+        # Get product data
+        product = next((p for p in self.master_products if p.pdt_code == pdt_code), None)
+        if not product:
+            return
+            
+        current_data = product.to_dict()
         dialog = MasterDataDialog(self.columns, parent=self, data=current_data, edit_mode=True)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             updated_record = dialog.get_data()
             new_code = updated_record.get('pdt_code', '').strip()
-            if new_code != current_data.get('pdt_code') and not self.master_df[self.master_df['pdt_code'] == new_code].empty:
+            
+            # Check for duplicate if pdt_code changed
+            if new_code != pdt_code and any(p.pdt_code == new_code for p in self.master_products):
                 QMessageBox.warning(self, "Duplicate", f"พบ pdt_code ซ้ำ: {new_code}")
                 return
 
-            for key in self.column_keys:
-                self.master_df.at[df_index, key] = updated_record.get(key, "")
-            self.master_df = self.master_df.reset_index(drop=True)
-            self._save_master_data()
-            self._refresh_table()
-            QMessageBox.information(self, "Success", "แก้ไขข้อมูลสำเร็จ")
+            if self.storage.update_master_product(pdt_code, **updated_record):
+                self.load_data()
+                QMessageBox.information(self, "Success", "แก้ไขข้อมูลสำเร็จ")
+            else:
+                QMessageBox.warning(self, "Error", "ไม่สามารถแก้ไขข้อมูลในฐานข้อมูลได้")
     
     def delete_product(self):
-        """Delete selected product"""
-        df_index = self._get_selected_df_index()
-        if df_index is None:
+        """Delete selected product from database"""
+        pdt_code = self._get_selected_pdt_code()
+        if pdt_code is None:
             QMessageBox.warning(self, "No Selection", "Please select a product to delete.")
             return
-        pdt_code = self.master_df.at[df_index, 'pdt_code'] if df_index < len(self.master_df) else ""
+            
         reply = QMessageBox.question(
             self,
             'Confirm Deletion',
@@ -243,13 +253,14 @@ class MasterTab(QWidget):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            self.master_df = self.master_df.drop(df_index).reset_index(drop=True)
-            self._save_master_data()
-            self._refresh_table()
-            QMessageBox.information(self, "Success", "ลบข้อมูลสำเร็จ")
+            if self.storage.delete_master_product(pdt_code):
+                self.load_data()
+                QMessageBox.information(self, "Success", "ลบข้อมูลสำเร็จ")
+            else:
+                QMessageBox.warning(self, "Error", "ไม่สามารถลบข้อมูลได้")
     
     def import_from_file(self):
-        """Import products from CSV or Excel file"""
+        """Import products from CSV or Excel file into database"""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Import Products",
@@ -264,23 +275,32 @@ class MasterTab(QWidget):
             if file_path.endswith(('.xlsx', '.xls')):
                 df = pd.read_excel(file_path)
             else:
-                df = pd.read_csv(file_path)
-
-            df = self._normalize_dataframe(df)
-            self.master_df = df
-            self._save_master_data()
-            self._refresh_table()
-            QMessageBox.information(self, "Import Results", "นำเข้าข้อมูลสำเร็จ")
+                try:
+                    df = pd.read_csv(file_path, encoding='utf-8-sig')
+                except UnicodeDecodeError:
+                    df = pd.read_csv(file_path, encoding='windows-1252')
+            
+            # Normalize and convert to list of dicts
+            df.columns = df.columns.str.strip().str.lower()
+            import_count = 0
+            for _, row in df.iterrows():
+                product_data = {key: str(row.get(key, "")) if not pd.isna(row.get(key)) else "" for key in self.column_keys}
+                if product_data['pdt_code']:
+                    self.storage.add_master_product(product_data)
+                    import_count += 1
+            
+            self.load_data()
+            QMessageBox.information(self, "Import Results", f"นำเข้าข้อมูลสำเร็จ {import_count} รายการ")
 
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Import Error",
-                f"An error occurred while importing the file:\n{str(e)}"
+                f"เกิดข้อผิดพลาดในการนำเข้าไฟล์:\n{str(e)}"
             )
     
     def export_to_csv(self):
-        """Export products to CSV file"""
+        """Export products from database to CSV file"""
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Products",
@@ -292,19 +312,27 @@ class MasterTab(QWidget):
             return  # User cancelled
         
         try:
-            export_df = self.master_df[self.column_keys].copy()
-            export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
-            QMessageBox.information(
-                self,
-                "Export Successful",
-                f"Successfully exported {len(export_df)} rows to:\n{file_path}"
-            )
+            # Get all from DB
+            products = self.storage.get_all_master_products()
+            data = [p.to_dict() for p in products]
+            export_df = pd.DataFrame(data)
+            
+            if not export_df.empty:
+                export_df = export_df[self.column_keys]
+                export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
+                QMessageBox.information(
+                    self,
+                    "Export Successful",
+                    f"ส่งออกข้อมูล {len(export_df)} รายการสำเร็จไปยัง:\n{file_path}"
+                )
+            else:
+                QMessageBox.warning(self, "Export", "ไม่มีข้อมูลสำหรับส่งออก")
 
         except Exception as e:
             QMessageBox.critical(
                 self,
                 "Export Error",
-                f"An error occurred while exporting to CSV:\n{str(e)}"
+                f"เกิดข้อผิดพลาดในการส่งออกไฟล์:\n{str(e)}"
             )
 
 

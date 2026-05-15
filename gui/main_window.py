@@ -1,10 +1,14 @@
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QVBoxLayout, QHBoxLayout, QWidget, QStatusBar,
-    QLabel, QPushButton, QMessageBox, QInputDialog, QTableWidgetItem
+    QLabel, QPushButton, QMessageBox, QInputDialog, QTableWidgetItem,
+    QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QTableWidget, QHeaderView, QComboBox
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction, QPixmap
 import os
+import qrcode
+from io import BytesIO
+from utils.mobile_connection_server import MobileConnectionServer
 
 from .tabs.dashboard_tab import DashboardTab
 from .tabs.master_tab import MasterTab
@@ -47,6 +51,49 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         self.setup_menu()
         self.setup_status_bar()
+        
+        # Initialize Centralized Mobile Server
+        self.init_mobile_server()
+
+    def init_mobile_server(self):
+        """Initialize the mobile server once for the whole app"""
+        try:
+            if self.app and hasattr(self.app, 'mobile_server') and self.app.mobile_server:
+                self.mobile_server = self.app.mobile_server
+                self.mobile_server.scan_received.connect(self.handle_global_scan)
+                self.update_connection_status(True)
+            else:
+                self.mobile_server = None
+                self.update_connection_status(False)
+                print("Mobile server was not initialized on startup.")
+        except Exception as e:
+            print(f"Failed to connect to mobile server: {e}")
+            self.mobile_server = None
+            self.update_connection_status(False)
+
+    def handle_global_scan(self, data):
+        """Route scans to the currently active tab or auto-dispatch existing rolls"""
+        try:
+            # 1. แกะ Roll ID จากข้อมูลสแกน (เช่น R26000001%SKU%... หรือ R26000001)
+            parts = data.split("%") if isinstance(data, str) else [data]
+            roll_id = parts[0].strip() if parts else str(data).strip()
+            
+            # 2. ตรวจสอบว่าม้วนนี้มีอยู่แล้วในระบบหรือไม่
+            existing = self.storage.get_roll_by_id(roll_id)
+            
+            if existing:
+                # ถ้ามีม้วนนี้อยู่แล้ว -> เด้งสลับไปหน้า Dispatch (เบิกออก) และเปิดป๊อปอัปให้เบิกทันที
+                print(f"Roll {roll_id} exists. Auto-switching to Dispatch Tab.")
+                self.handle_quick_dispatch(roll_id)
+            else:
+                # ถ้าไม่มีม้วนนี้ในระบบ -> ทำตามขั้นตอนรับเข้าปกติของแท็บปัจจุบัน
+                active_tab = self.tab_widget.currentWidget()
+                if active_tab == self.scan_tab:
+                    self.scan_tab.controller.handle_mobile_scan(data)
+                elif active_tab == self.dispatch_tab:
+                    self.dispatch_tab.set_roll_id(roll_id)
+        except Exception as e:
+            print(f"Error handling global scan: {e}")
     
     def setup_ui(self):
         """Set up the main UI components"""
@@ -60,12 +107,12 @@ class MainWindow(QMainWindow):
         
         # Add tabs
         self.dashboard_tab = DashboardTab(self.storage)
-        self.receive_tab = ReceiveTab(self.storage)
-        self.dispatch_tab = DispatchTab(self.storage)
-        self.rolls_tab = RollsTab(self.storage)
-        self.logs_tab = LogsTab(self.storage)
-        self.statistics_tab = StatisticsTab(self.storage)
-        self.scan_tab = ScanTab(self.storage)
+        self.receive_tab = ReceiveTab(self.storage, self.current_user)
+        self.dispatch_tab = DispatchTab(self.storage, self.current_user)
+        self.rolls_tab = RollsTab(self.storage, self.current_user)
+        self.logs_tab = LogsTab(self.storage, self.current_user)
+        self.statistics_tab = StatisticsTab(self.storage, self.current_user)
+        self.scan_tab = ScanTab(self.storage, self.current_user)
 
         # If not logged in, show only Reports tab
         if not self.current_user:
@@ -92,7 +139,45 @@ class MainWindow(QMainWindow):
                 self.tab_widget.addTab(self.dispatch_tab, "เบิกออก / Dispatch")
                 self.tab_widget.addTab(self.statistics_tab, "รายงาน / Reports")
         
+        # Connect tab change signal for auto-refresh
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
+        # Connect quick dispatch signal
+        self.rolls_tab.dispatch_requested.connect(self.handle_quick_dispatch)
+        
         layout.addWidget(self.tab_widget)
+    
+    def on_tab_changed(self, index):
+        """เรียกใช้ฟังก์ชัน Refresh ของแท็บที่ถูกเลือก"""
+        tab = self.tab_widget.widget(index)
+        
+        # ค้นหาว่าเป็นแท็บไหนแล้วสั่ง Refresh
+        if isinstance(tab, DashboardTab):
+            if hasattr(tab, 'refresh_data'): tab.refresh_data()
+        elif isinstance(tab, MasterTab):
+            tab.load_data()
+        elif isinstance(tab, ReceiveTab):
+            if hasattr(tab, 'setup_autocomplete'): tab.setup_autocomplete()
+        elif isinstance(tab, RollsTab):
+            tab.controller.refresh_data()
+        elif isinstance(tab, DispatchTab):
+            tab.refresh_ui()
+        elif isinstance(tab, LogsTab):
+            tab.load_logs()
+        elif isinstance(tab, StatisticsTab):
+            tab.controller.refresh_data()
+        elif isinstance(tab, ScanTab):
+            pass # หน้าสแกนไม่ต้อง Refresh ตาราง
+            
+    def handle_quick_dispatch(self, roll_id):
+        """สลับไปยังหน้าเบิกออกและกรอก Roll ID ให้อัตโนมัติ"""
+        # ค้นหา Index ของหน้าเบิกออก (Dispatch)
+        for i in range(self.tab_widget.count()):
+            tab_widget = self.tab_widget.widget(i)
+            if isinstance(tab_widget, DispatchTab):
+                self.tab_widget.setCurrentIndex(i)
+                self.dispatch_tab.set_roll_id(roll_id)
+                break
     
     def setup_menu(self):
         """Set up the menu bar"""
@@ -218,7 +303,7 @@ class MainWindow(QMainWindow):
         """Show about dialog"""
         about_text = """
         <h2>Fabric Roll Management System</h2>
-        <p>Version 1.0.0</p>
+        <p>Version 1.0.1</p>
         <p>A desktop application for managing fabric rolls, generating QR labels, 
         and tracking roll usage.</p>
         <p>© 2025 Aurelic Systems</p>
@@ -250,8 +335,6 @@ class MainWindow(QMainWindow):
     
     def change_password(self):
         """Show change password dialog"""
-        from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit, QDialogButtonBox
-        
         dialog = QDialog(self)
         dialog.setWindowTitle("เปลี่ยนรหัสผ่าน / Change Password")
         dialog.setMinimumWidth(400)
@@ -313,8 +396,6 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Access Denied", "คุณไม่มีสิทธิ์เข้าถึง / You don't have permission")
             return
         
-        from PySide6.QtWidgets import QDialog, QTableWidget, QHeaderView
-        
         dialog = QDialog(self)
         dialog.setWindowTitle("จัดการผู้ใช้ / User Management")
         dialog.setMinimumSize(800, 600)
@@ -375,8 +456,6 @@ class MainWindow(QMainWindow):
     
     def add_new_user(self, parent, table):
         """Add new user dialog"""
-        from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox
-        
         dialog = QDialog(parent)
         dialog.setWindowTitle("เพิ่มผู้ใช้ใหม่ / Add New User")
         dialog.setMinimumWidth(400)
@@ -490,6 +569,13 @@ class MainWindow(QMainWindow):
     def set_current_user(self, user):
         """Set current user and update UI"""
         self.current_user = user
+        
+        # Propagate user to all tabs
+        for tab_attr in ['receive_tab', 'dispatch_tab', 'rolls_tab', 'logs_tab', 'statistics_tab', 'scan_tab']:
+            if hasattr(self, tab_attr):
+                tab = getattr(self, tab_attr)
+                if tab:
+                    tab.current_user = user
         
         # Update window title
         title = "Fabric Roll Management System"

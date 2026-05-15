@@ -5,13 +5,16 @@ import logging
 import socket
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QLocale
 from PySide6.QtGui import QIcon
 from gui.main_window import MainWindow
 from gui.dialogs.login_dialog import LoginDialog
-from storage import StorageManager
-from api_server import APIServer
-from auth import AuthManager
+from core.storage import StorageManager
+from core.api_server import APIServer
+from core.auth import AuthManager
+
+# Silence Werkzeug (Flask) logging
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 # Configure logging
 logging.basicConfig(
@@ -46,31 +49,96 @@ class FabricRollApp(QApplication):
         self.data_dir = Path("data")
         self.data_dir.mkdir(exist_ok=True)
         
+        # Collect status for summary
+        self.status_summary = []
+        
+        # 0. Environment Info
+        import platform
+        import getpass
+        self.status_summary.append(("Environment", "OK", f"{platform.system()} {platform.release()} (User: {getpass.getuser()})"))
+        
         try:
-            # Initialize authentication manager
-            self.auth_manager = AuthManager(os.path.join(os.getcwd(), "data"))
-            logger.info("Authentication manager initialized successfully")
-            
-            # Initialize storage
+            # 1. Assets Check
+            icon_path = os.path.join(os.path.dirname(__file__),"assets", "fabric.png")
+            if os.path.exists(icon_path):
+                self.status_summary.append(("Assets", "OK", "Icon & UI assets found"))
+            else:
+                self.status_summary.append(("Assets", "WARN", "Icon missing"))
+
+            # 2. Storage & Database Stats
             self.storage = StorageManager(os.path.join(os.getcwd(), "data"))
-            logger.info("Storage initialized successfully")
+            roll_count = self.storage.get_total_rolls_count()
+            master_count = self.storage.get_total_master_count()
+            self.status_summary.append(("Database", "OK", f"{roll_count} Rolls, {master_count} Products loaded"))
+
+            # 3. Authentication
+            self.auth_manager = AuthManager(self.storage)
+            self.status_summary.append(("Auth Manager", "OK", "Security system ready"))
             
-            # Start API server
-            self.start_api_server()
+            # 4. Network Info
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(('8.8.8.8', 80))
+                local_ip = s.getsockname()[0]
+            except Exception:
+                local_ip = "127.0.0.1"
+            finally:
+                s.close()
+            self.status_summary.append(("Network", "OK", f"Local IP: {local_ip}"))
+
+            # 5. API Server
+            try:
+                self.start_api_server()
+                self.status_summary.append(("API Server", "OK", f"http://{self.api_server.host}:{self.api_server.port}"))
+            except Exception as e:
+                self.status_summary.append(("API Server", "FAIL", f"Failed to start API Server: {str(e)}"))
             
-            # Show main window without login (Reports tab visible first)
+            # 6. Mobile Server (URL Info)
+            from utils.mobile_connection_server import MobileConnectionServer
+            try:
+                self.mobile_server = MobileConnectionServer()
+                if not hasattr(self.mobile_server, 'cert_file') or not hasattr(self.mobile_server, 'key_file'):
+                    raise Exception("SSL Certificate files (.pem) not found. Please check cgen.exe in cert folder.")
+                self.mobile_server.start()
+                mobile_url = f"https://{local_ip}:8000"
+                self.status_summary.append(("Mobile Server", "OK", f"Listening at {mobile_url}"))
+            except Exception as e:
+                self.mobile_server = None
+                self.status_summary.append(("Mobile Server", "WARN", f"Failed to start Mobile Server: {str(e)}"))
+            
+            # Print Summary before showing window
+            self.print_system_summary()
+            
+            # ตรวจสอบว่าระบบใดใช้งานไม่ได้ (WARN หรือ FAIL) แล้วแจ้งเตือนผู้ใช้งานแบบเด้งป๊อปอัป
+            failed_systems = [f"• {item}: {detail}" for item, status, detail in self.status_summary if status in ("WARN", "FAIL")]
+            if failed_systems:
+                warning_message = (
+                    "⚠️ ระบบตรวจพบข้อผิดพลาดหรือคำเตือนบางประการ:\n\n"
+                    + "\n".join(failed_systems) + "\n\n"
+                    "ระบบบางฟังก์ชันอาจไม่สามารถใช้งานได้ (เช่น ระบบสแกนด้วยกล้องมือถือหาก Mobile Server มีปัญหา)"
+                )
+                QMessageBox.warning(None, "รายงานสถานะระบบ / System Status Report", warning_message)
+            
+            # Show main window without login
             self.main_window = None
             self.show_main_window_without_login()
             
         except Exception as e:
-            logger.critical(f"Failed to initialize application: {e}", exc_info=True)
-            QMessageBox.critical(
-                None,
-                "Initialization Error",
-                f"Failed to initialize application:\n{str(e)}\n\n"
-                "Please check the logs for more details."
-            )
+            logger.critical(f"Failed to initialize application: {e}")
+            self.status_summary.append(("System", "FAIL", str(e)))
+            self.print_system_summary()
+            QMessageBox.critical(None, "Error", f"Failed to initialize application:\n{str(e)}")
             self.quit()
+
+    def print_system_summary(self):
+        """แสดงตารางสรุปสถานะการเริ่มต้นระบบแบบสะอาดตา"""
+        print("\n" + "="*60)
+        print("      Fabric Roll Management System - Startup Summary")
+        print("="*60)
+        for item, status, detail in self.status_summary:
+            print(f" [{status}] {item:<15} : {detail}")
+        print("="*60)
+        print(" Status: System Ready\n")
     
     def show_main_window_without_login(self):
         """Show main window without login (Reports tab visible first)"""
@@ -171,7 +239,7 @@ class FabricRollApp(QApplication):
             )
             # Run in a separate thread
             self.api_server.run_in_thread()
-            logger.info(f"API server started on {self.api_server.host}:{self.api_server.port}")
+            # Status will be updated in the main summary
 
         except Exception as e:
             logger.error(f"Failed to start API server: {e}")
@@ -217,6 +285,9 @@ def main():
     sys.excepthook = handle_exception
     
     try:
+        # บังคับให้ใช้ตัวเลขแบบสากล (แก้ปัญหาเลขไทย)
+        QLocale.setDefault(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
+        
         # Initialize the application
         app = FabricRollApp(sys.argv)
         

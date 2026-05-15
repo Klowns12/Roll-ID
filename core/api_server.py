@@ -68,7 +68,7 @@ class APIServer:
             return jsonify({
                 'status': 'ok',
                 'timestamp': datetime.now().isoformat(),
-                'version': '1.0.0'
+                'version': '1.0.1'
             })
         
         @self.app.route('/api/scan', methods=['POST'])
@@ -147,7 +147,8 @@ class APIServer:
                 host=self.host,
                 port=self.port,
                 debug=self.debug,
-                use_reloader=False
+                use_reloader=False,
+                allow_unsafe_werkzeug=True
             )
         except Exception as e:
             logger.error(f"API server error: {e}")

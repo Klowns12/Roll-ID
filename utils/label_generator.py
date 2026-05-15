@@ -24,15 +24,14 @@ class LabelGenerator:
         self.color_header_bg = (33, 150, 243)  # สีพื้นหลังหัวเรื่อง
         self.color_header_text = (255, 255, 255)  # สีตัวอักษรหัวเรื่อง
 
-    def create_label(self, roll_data, include_qr=True):
+    def create_label(self, roll_data, include_qr=True, user="system"):
         """
         สร้างฉลากขนาด 10x5 เซนติเมตร (300 DPI)
 
         Args:
             roll_data: dict ข้อมูลม้วนผ้า
             include_qr: bool รวม QR Code หรือไม่
-
-        Returns:
+            user: ชื่อผู้ที่สั่งพิมพ์ฉลาก
             PIL.Image: รูปฉลากขนาดเล็ก
         """
 
@@ -91,7 +90,7 @@ class LabelGenerator:
                 "code",
             ),
             "colour": _get_value("colour", "color"),
-            "packing_unit": _get_value("packing_unit", "package_unit", "unit_type"),
+            "packing_unit": _get_value("packing_unit", "package_unit", "unit_type", "unit"),
             "unit_type": _get_value("unit_type", default="MTS"),
             "grade": _get_value("grade", default="A"),
             "type_of_roll": _get_value("type_of_roll"),
@@ -109,25 +108,28 @@ class LabelGenerator:
         # ขนาดพิกเซล 300 DPI
         width = int(10 * 300 / 2.54)  # 10 cm
         height = int(5 * 300 / 2.54)  # 5 cm
+        
+        # กำหนดระยะขอบที่ปลอดภัย (Safe Margin)
+        margin = 40 
 
         img = Image.new("RGB", (width, height), self.color_bg)
         draw = ImageDraw.Draw(img)
 
-        # วาดขอบ
+        # วาดขอบที่เลื่อนเข้ามาด้านใน
         draw.rectangle(
-            [5, 5, width - 5, height - 5], outline=self.color_border, width=2
+            [margin // 2, margin // 2, width - (margin // 2), height - (margin // 2)], 
+            outline=self.color_border, width=2
         )
 
         # QR Code ต้องเก็บ Roll ID เพื่อให้ Dispatch tab ค้นหาได้ง่าย
-        # qr_string = data['roll_id']
         qr_string = f"{data['roll_id']}"
 
-        # QR Code ขนาดเล็ก
+        # QR Code ขนาดเล็กลงเล็กน้อยเพื่อความปลอดภัย
         if include_qr:
-            qr_size = 340
+            qr_size = 300 # ลดจาก 340
             qr_img = self.generate_qr_code(qr_string, size=qr_size)
-            qr_x = (width - qr_size) - 20
-            qr_y = (height - qr_size) - 20
+            qr_x = (width - qr_size) - margin
+            qr_y = (height - qr_size) - margin
             img.paste(qr_img, (qr_x, qr_y))
 
         # ข้อมูลทางขวาของ QR Code
@@ -174,124 +176,71 @@ class LabelGenerator:
         if thai_font is None:
             thai_font = font_large
 
-        t_x = 50
-        t_y = 180
-        t_gap = 50  # Reduced gap to fit before QR
+        # ตำแหน่งข้อความหลัก
+        t_x = margin + 20
+        t_y = 185 # ขยับขึ้นเล็กน้อย
+        t_gap = 42 # ลดระยะห่างระหว่างบรรทัดเพื่อให้ 8 บรรทัดไม่ทับขอบ
 
-        # Calculate available width for text (Total width - QR size - padding)
-        # QR starts at approx width - 360 (340 size + 20 padding)
-        # So text has space until approx width - 380
-        qr_start_x = (width - 340) - 20
-        max_text_width = qr_start_x - t_x - 20  # 20px padding from QR
+        # คำนวณพื้นที่ความกว้างสำหรับข้อความ (เพื่อไม่ให้ทับ QR)
+        qr_start_x = (width - 300) - margin
+        max_text_width = qr_start_x - t_x - 30 
 
-        def truncate_text_by_width(text, font, max_width):
-            """ตัดข้อความตามความกว้างพิกเซล"""
-            if not text:
-                return ""
+        # แสดงข้อมูลทีละบรรทัด พร้อมระบบตัดข้อความอัตโนมัติ
+        # รวม Width และ Length ไว้ในบรรทัดเดียวกันเพื่อประหยัดพื้นที่
+        w_l_text = f"{data.get('width', '')}  |  {data.get('length', '')}"
+        
+        fields = [
+            ("ROLL ID", data['roll_id']),
+            ("SPECIFICATION", data['specification']),
+            ("PRODUCT", data['product_name']),
+            ("COLOR", data['colour']),
+            ("PACKING UNIT", data['packing_unit']),
+            ("DIMENSION", w_l_text),
+            ("LOCATION", data['location']),
+            ("PRINTED BY", user)
+        ]
 
-            # Check if full text fits
-            if draw.textlength(text, font=font) <= max_width:
-                return text
+        for i, (label, val) in enumerate(fields):
+            prefix = f"{label} : "
+            prefix_w = draw.textlength(prefix, font=font_large)
+            avail_w = max_text_width - prefix_w
+            
+            # ใช้ฟอนต์ไทยสำหรับข้อมูล
+            display_val = self._truncate_text_by_width(draw, str(val), thai_font, avail_w)
+            
+            draw.text(
+                (t_x, t_y + (t_gap * i)),
+                f"{prefix}{display_val}",
+                fill=self.color_text,
+                font=font_large if label != "SPECIFICATION" else thai_font
+            )
 
-            # Binary search or iterative approach to find fit
-            # Iterative is safer for variable width fonts
-            current_text = text
-            while len(current_text) > 0:
-                # Try with ellipsis
-                test_text = current_text + "..."
-                if draw.textlength(test_text, font=font) <= max_width:
-                    return test_text
-                current_text = current_text[:-1]
+        # ------------------------------------------------------------
+        # โซนขวาบน (Header Stack: LOT -> DATE)
+        # ------------------------------------------------------------
+        
+        # 1. LOT (บนสุด - ตัวหนาใหญ่)
+        lot_val = str(data['lot'])
+        lot_label = "LOT."
+        lot_val_font = ImageFont.truetype("arialbd.ttf", 60)
+        lot_val_w = draw.textlength(lot_val, font=lot_val_font)
+        
+        # วาด "LOT." เล็กๆ ข้างหน้าเลขล็อต
+        draw.text((width - lot_val_w - margin - 100, margin + 25), lot_label, fill=self.color_text, font=font_large)
+        # วาดเลขล็อต
+        draw.text((width - lot_val_w - margin - 20, margin + 5), lot_val, fill=self.color_text, font=lot_val_font)
 
-            return "..."
-
-        # เลขม้วน
+        # 2. DATE (ใต้ LOT)
+        date_text = f"DATE: {data['date_received']}"
+        date_w = draw.textlength(date_text, font=font_large)
         draw.text(
-            (t_x, t_y + (t_gap * 0)),
-            f"ROLL ID : {data['roll_id']}",
+            (width - date_w - margin - 20, margin + 75),
+            date_text,
             fill=self.color_text,
             font=font_large,
         )
 
-        # Specification - Use dynamic truncation
-        spec_prefix = "SPECIFICAT ON : "
-        prefix_width = draw.textlength(spec_prefix, font=thai_font)
-        avail_width_spec = max_text_width - prefix_width
-        spec_text = truncate_text_by_width(
-            data["specification"], thai_font, avail_width_spec
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 1)),
-            f"{spec_prefix}{spec_text}",
-            fill=self.color_text,
-            font=thai_font,
-        )
-
-        # Product - Use dynamic truncation
-        prod_prefix = "PRODUCT : "
-        prefix_width = draw.textlength(prod_prefix, font=font_large)
-        avail_width_prod = max_text_width - prefix_width
-        product_text = truncate_text_by_width(
-            data["product_name"], font_large, avail_width_prod
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 2)),
-            f"{prod_prefix}{product_text}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 3)),
-            f"COLOR : {data['colour']}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 4)),
-            f"PACKING UNIT : {data['packing_unit']}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 5)),
-            f"WIDTH : {data.get('width', '')}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        draw.text(
-            (t_x, t_y + (t_gap * 6)),
-            f"LENGTH : {data.get('length', '')}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        # วันที่
-        draw.text(
-            (width - 350, t_y - t_gap),
-            f"DATE  {data['date_received']}",
-            fill=self.color_text,
-            font=font_large,
-        )
-
-        # Lot No.
-        # Moved to left to avoid cutoff
-        lot_x = width - 550
-        lot_y = 70
-
-        draw.text((lot_x, lot_y), "LOT.", fill=self.color_text, font=font_large)
-
-        draw.text(
-            (lot_x + 100, lot_y - 20),
-            f"{data['lot']}",
-            fill=self.color_text,
-            font=ImageFont.truetype("arialbd.ttf", 64),
-        )
+        # Lot No. ถูกย้ายไปด้านบนขวาแล้ว
 
         return img
 
@@ -319,6 +268,24 @@ class LabelGenerator:
         qr_img = qr_img.resize((size, size), Image.Resampling.LANCZOS)
 
         return qr_img
+
+    def _truncate_text_by_width(self, draw, text, font, max_width):
+        """ตัดข้อความตามความกว้างพิกเซล"""
+        if not text:
+            return ""
+
+        # Check if full text fits
+        if draw.textlength(text, font=font) <= max_width:
+            return text
+
+        current_text = str(text)
+        while len(current_text) > 0:
+            test_text = current_text + "..."
+            if draw.textlength(test_text, font=font) <= max_width:
+                return test_text
+            current_text = current_text[:-1]
+
+        return "..."
 
     def _draw_centered_text(self, draw, text, y, font, width, bold=False):
         """วาดข้อความตรงกลาง"""

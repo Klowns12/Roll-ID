@@ -6,8 +6,9 @@ Label Preview Dialog
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QMessageBox, QScrollArea, QFileDialog
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, QSizeF
+from PySide6.QtGui import QPixmap, QPainter, QPageSize
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from io import BytesIO
 from utils.label_generator import LabelGenerator
 
@@ -20,17 +21,26 @@ class LabelPreviewDialog(QDialog):
         self.roll_data = roll_data
         self.label_image = None
         self.generator = LabelGenerator()  # ใช้ LabelGenerator
-        self.setWindowTitle(f"Label Preview - {self.roll_data.roll_id}")
+        
+        # Safe access to roll_id
+        self.roll_id = self._get_val("roll_id", "UNKNOWN")
+        
+        self.setWindowTitle(f"Label Preview - {self.roll_id}")
         self.setGeometry(100, 100, 800, 600)
         self.setup_ui()
         self.generate_label()
+    
+    def _get_val(self, key, default=""):
+        if isinstance(self.roll_data, dict):
+            return self.roll_data.get(key, default)
+        return getattr(self.roll_data, key, default)
     
     def setup_ui(self):
         """Set up the dialog UI"""
         layout = QVBoxLayout()
 
         # Title
-        title = QLabel(f"Preview: {self.roll_data.roll_id}")
+        title = QLabel(f"Preview: {self.roll_id}")
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(title)
         
@@ -90,10 +100,6 @@ class LabelPreviewDialog(QDialog):
     def print_label(self):
         """Print the label"""
         try:
-            from PySide6.QtPrintSupport import QPrinter, QPrintDialog
-            from PySide6.QtGui import QPainter
-            from PySide6.QtCore import QPageSize, QSizeF
-            
             printer = QPrinter(QPrinter.HighResolution)
             
             # ตั้งค่า page size สำหรับฉลาก 10x5 cm
@@ -133,7 +139,7 @@ class LabelPreviewDialog(QDialog):
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
                 "Save Label",
-                f"{self.roll_data.roll_id}_label.png",
+                f"{self.roll_id}_label.png",
                 "PNG Image (*.png);;JPEG Image (*.jpg)"
             )
             

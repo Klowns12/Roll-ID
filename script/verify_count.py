@@ -3,10 +3,10 @@ import sys
 from pathlib import Path
 import pandas as pd
 
-# Add current directory to path so we can import storage
+# Add current directory to path so we can import core package
 sys.path.append(os.getcwd())
 
-from storage import StorageManager
+from core.storage import StorageManager
 
 def verify_master_data_count():
     # Setup paths

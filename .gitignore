@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 *.pem
 /New folder
+/RollOld
+/dist
+/build
