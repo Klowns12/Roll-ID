@@ -101,9 +101,12 @@ class LogEntry:
 # --------------------------------------------------------------------
 class StorageManager:
     def __init__(self, data_dir: Union[str, Path]):
+        from dotenv import load_dotenv
+        load_dotenv()
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.db_path = self.data_dir / "storage.db"
+        db_file = os.getenv("DATABASE_FILE", "storage.db")
+        self.db_path = self.data_dir / db_file
         self._lock = threading.Lock()
         self._init_db()
 

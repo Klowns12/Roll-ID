@@ -620,3 +620,68 @@ sqlite3.OperationalError: no such table: rolls
 2026-05-17 23:02:38,112 - core.api_server - INFO - API server stopped
 2026-05-17 23:02:38,112 - __main__ - INFO - API server stopped
 2026-05-17 23:02:38,113 - __main__ - INFO - Application cleanup complete
+2026-05-20 21:19:09,006 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-20 21:19:09,820 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-20 21:19:10,922 - __main__ - INFO - Showing main window without login
+2026-05-20 21:21:09,147 - __main__ - INFO - Cleaning up application resources...
+2026-05-20 21:21:09,149 - __main__ - INFO - Stopping API server...
+2026-05-20 21:21:09,149 - core.api_server - INFO - Stopping API server...
+2026-05-20 21:21:09,149 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-20 21:21:09,151 - core.api_server - INFO - API server stopped
+2026-05-20 21:21:09,151 - __main__ - INFO - API server stopped
+2026-05-20 21:21:09,152 - __main__ - INFO - Application cleanup complete
+2026-05-25 19:48:24,416 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-25 19:48:25,021 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-25 19:48:25,942 - __main__ - INFO - Showing main window without login
+2026-05-25 19:48:36,311 - __main__ - INFO - User admin logged in successfully
+2026-05-25 19:49:52,683 - __main__ - INFO - Cleaning up application resources...
+2026-05-25 19:49:52,683 - __main__ - INFO - Stopping API server...
+2026-05-25 19:49:52,684 - core.api_server - INFO - Stopping API server...
+2026-05-25 19:49:52,684 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-25 19:49:52,684 - core.api_server - INFO - API server stopped
+2026-05-25 19:49:52,685 - __main__ - INFO - API server stopped
+2026-05-25 19:49:52,686 - __main__ - INFO - Application cleanup complete
+2026-05-25 19:49:57,981 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-25 19:49:58,114 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-25 19:49:58,369 - __main__ - INFO - Showing main window without login
+2026-05-25 19:50:03,538 - __main__ - INFO - User admin logged in successfully
+2026-05-25 19:56:04,702 - __main__ - INFO - Cleaning up application resources...
+2026-05-25 19:56:04,703 - __main__ - INFO - Stopping API server...
+2026-05-25 19:56:04,703 - core.api_server - INFO - Stopping API server...
+2026-05-25 19:56:04,703 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-25 19:56:04,704 - core.api_server - INFO - API server stopped
+2026-05-25 19:56:04,704 - __main__ - INFO - API server stopped
+2026-05-25 19:56:04,705 - __main__ - INFO - Application cleanup complete
+2026-05-25 19:56:57,894 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-25 19:56:58,051 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-25 19:56:58,438 - __main__ - INFO - Showing main window without login
+2026-05-25 19:57:03,621 - __main__ - INFO - User admin logged in successfully
+2026-05-25 20:00:13,946 - __main__ - INFO - Cleaning up application resources...
+2026-05-25 20:00:13,946 - __main__ - INFO - Stopping API server...
+2026-05-25 20:00:13,946 - core.api_server - INFO - Stopping API server...
+2026-05-25 20:00:13,947 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-25 20:00:13,947 - core.api_server - INFO - API server stopped
+2026-05-25 20:00:13,948 - __main__ - INFO - API server stopped
+2026-05-25 20:00:13,948 - __main__ - INFO - Application cleanup complete
+2026-05-25 20:00:19,234 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-25 20:00:19,381 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-25 20:00:19,733 - __main__ - INFO - Showing main window without login
+2026-05-25 20:00:25,002 - __main__ - INFO - User admin logged in successfully
+2026-05-25 20:02:09,304 - __main__ - INFO - Cleaning up application resources...
+2026-05-25 20:02:09,304 - __main__ - INFO - Stopping API server...
+2026-05-25 20:02:09,304 - core.api_server - INFO - Stopping API server...
+2026-05-25 20:02:09,304 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-25 20:02:09,304 - core.api_server - INFO - API server stopped
+2026-05-25 20:02:09,304 - __main__ - INFO - API server stopped
+2026-05-25 20:02:09,304 - __main__ - INFO - Application cleanup complete
+2026-05-26 21:06:50,078 - __main__ - INFO - Application icon path: C:\Users\Golfic\Documents\GitHub\Roll-ID\assets\fabric.png
+2026-05-26 21:06:50,281 - core.api_server - INFO - Starting API server on 0.0.0.0:5000
+2026-05-26 21:06:51,512 - __main__ - INFO - Showing main window without login
+2026-05-26 21:07:32,369 - __main__ - INFO - User admin logged in successfully
+2026-05-26 21:22:34,411 - __main__ - INFO - Cleaning up application resources...
+2026-05-26 21:22:34,411 - __main__ - INFO - Stopping API server...
+2026-05-26 21:22:34,411 - core.api_server - INFO - Stopping API server...
+2026-05-26 21:22:34,411 - core.api_server - INFO - No active request context; skipping Flask shutdown.
+2026-05-26 21:22:34,415 - core.api_server - INFO - API server stopped
+2026-05-26 21:22:34,415 - __main__ - INFO - API server stopped
+2026-05-26 21:22:34,416 - __main__ - INFO - Application cleanup complete

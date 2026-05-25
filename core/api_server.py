@@ -39,6 +39,10 @@ class APIServer:
         
         # Initialize Flask and SocketIO
         self.app = Flask(__name__)
+        import os
+        from dotenv import load_dotenv
+        load_dotenv()
+        self.app.config['SECRET_KEY'] = os.getenv("API_SECRET_KEY", "your-secret-key-here")
         self.socketio = SocketIO(
             self.app,
             cors_allowed_origins="*",

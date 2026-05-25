@@ -217,25 +217,31 @@ class FabricRollApp(QApplication):
     def start_api_server(self):
         """Start the API server in a separate thread"""
         try:
-            # Try to find an available port
-            host = '0.0.0.0'
-            ports_to_try = [5000, 5001, 5002, 5003, 5004]
-            available_port = None
+            from dotenv import load_dotenv
+            load_dotenv()
+            host = os.getenv("API_HOST", "0.0.0.0")
+            env_port = os.getenv("API_PORT")
+            
+            if env_port:
+                available_port = int(env_port)
+            else:
+                ports_to_try = [5000, 5001, 5002, 5003, 5004]
+                available_port = None
+                for port in ports_to_try:
+                    if self.is_port_available(host, port):
+                        available_port = port
+                        break
+                if not available_port:
+                    logger.warning("No available ports found in range 5000-5004, using 5000 anyway")
+                    available_port = 5000
 
-            for port in ports_to_try:
-                if self.is_port_available(host, port):
-                    available_port = port
-                    break
-
-            if not available_port:
-                logger.warning("No available ports found in range 5000-5004, using 5000 anyway")
-                available_port = 5000
+            debug_mode = os.getenv("API_DEBUG", "False").lower() in ("true", "1", "t")
 
             # Start API server with available port
             self.api_server = APIServer(
                 host=host,
                 port=available_port,
-                debug=False
+                debug=debug_mode
             )
             # Run in a separate thread
             self.api_server.run_in_thread()

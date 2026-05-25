@@ -186,8 +186,11 @@ class DispatchQuantityDialog(QDialog):
         
         self.cus_code_input = QLineEdit()
         self.cus_code_input.textChanged.connect(self.update_remaining)
+        self.cus_code_input.editingFinished.connect(self.fetch_customer_name)
         
         self.cus_name_input = QLineEdit()
+        self.cus_name_input.setReadOnly(True)
+        self.cus_name_input.setPlaceholderText("จะแสดงชื่อลูกค้าเมื่อค้นหาด้วยรหัสสำเร็จ...")
         self.cus_name_input.textChanged.connect(self.update_remaining)
         
         self.remaining_label = QLabel(f"{roll.length:.2f} m")
@@ -207,6 +210,16 @@ class DispatchQuantityDialog(QDialog):
         self.btns.rejected.connect(self.reject)
         self.ok_button = self.btns.button(QDialogButtonBox.Ok)
         layout.addWidget(self.btns)
+
+    def fetch_customer_name(self):
+        code = self.cus_code_input.text().strip()
+        if code:
+            from core.customer import fetch_customer_by_id
+            result = fetch_customer_by_id(code)
+            if result:
+                _, name = result
+                self.cus_name_input.setText(name)
+                self.update_remaining()
 
     def update_remaining(self):
         try:

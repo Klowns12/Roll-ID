@@ -43,6 +43,8 @@ The Fabric Roll Management System now includes a secure login system with role-b
 
 When you run the application for the first time, a default admin account is automatically created:
 
+
+
 เมื่อเปิดโปรแกรมครั้งแรก บัญชีผู้ดูแลระบบเริ่มต้นจะถูกสร้างอัตโนมัติ:
 
 ```
